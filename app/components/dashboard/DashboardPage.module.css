@@ -1,0 +1,562 @@
+@reference "../../globals.css";
+
+.shell {
+  --ink: #392d26;
+  --muted: #988a7e;
+  --line: #e9dfd3;
+  @apply grid min-h-svh w-full;
+  grid-template-columns: clamp(172px, 14.6vw, 236px) minmax(0, 1fr);
+  color: var(--ink);
+  background: #f7efe1;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+}
+
+.sidebar {
+  @apply sticky top-0 flex h-svh flex-col;
+  padding: 21px 14px 13px;
+  color: #e9ddd1;
+  background: #2b180f;
+}
+
+.brand {
+  @apply flex items-center;
+  gap: 8px;
+  color: #fffaf4;
+  text-decoration: none;
+}
+
+.brand img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.brand strong {
+  font-size: 16px;
+  letter-spacing: -.04em;
+}
+
+.navigation {
+  @apply grid;
+  gap: 4px;
+  margin-top: 23px;
+}
+
+.navLink {
+  @apply flex items-center;
+  min-height: 37px;
+  gap: 10px;
+  padding: 0 11px;
+  border-radius: 6px;
+  color: #cbbcaf;
+  font-size: 12px;
+  text-decoration: none;
+  transition: background .15s ease, color .15s ease;
+}
+
+.navLink svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.navLink:hover,
+.active {
+  color: #fffaf4;
+  background: #805336;
+}
+
+.sidebarBottom {
+  @apply flex items-center;
+  margin-top: auto;
+  padding-top: 13px;
+  border-top: 1px solid #4b362a;
+}
+
+.userInitials {
+  color: #e9ddd1;
+  font-size: 11px;
+}
+
+.main {
+  @apply flex min-h-svh min-w-0 flex-col;
+  background-color: #f5ebd7;
+  background-position: center;
+  background-size: cover;
+}
+
+.topbar {
+  @apply flex h-11.5 shrink-0 items-center;
+  gap: 17px;
+  padding: 0 18px;
+  border-bottom: 1px solid rgba(221, 209, 192, .75);
+  background: rgba(250, 243, 231, .91);
+}
+
+.breadcrumb {
+  min-width: 25px;
+  color: #8b7d70;
+  font-size: 10px;
+}
+
+.searchBox {
+  @apply flex h-7.25 flex-1 items-center;
+  gap: 8px;
+  padding: 0 9px;
+  border: 1px solid #e8ded2;
+  border-radius: 7px;
+  color: #8c7e72;
+  background: rgba(255, 255, 255, .84);
+}
+
+.searchBox svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+
+.searchBox input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+}
+
+.searchBox input::placeholder {
+  color: #9a8c80;
+  opacity: 1;
+}
+
+.searchBox kbd {
+  flex: 0 0 auto;
+  color: #9b8c7e;
+  font-size: 9px;
+}
+
+.content {
+  @apply mx-auto flex w-full flex-1 flex-col;
+  max-width: 1600px;
+  padding: 18px 18px 10px;
+}
+
+.workspaceGrid {
+  @apply grid flex-1;
+  grid-template-columns: minmax(0, 2.12fr) minmax(275px, 1fr);
+  grid-template-rows: auto minmax(275px, 1fr) auto;
+  gap: 14px 15px;
+}
+
+.metricsGrid {
+  @apply grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metricCard,
+.card {
+  min-width: 0;
+  border: 1px solid rgba(226, 216, 203, .94);
+  border-radius: 10px;
+  background: rgba(255, 253, 249, .94);
+  box-shadow: 0 2px 8px rgba(77, 48, 27, .035);
+}
+
+.metricCard {
+  @apply flex flex-col justify-between;
+  min-height: 84px;
+  padding: 13px 14px 12px;
+}
+
+.metricLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64584f;
+  font-size: 10px;
+}
+
+.metricLabel svg {
+  width: 15px;
+  height: 15px;
+  color: #9a8e82;
+}
+
+.metricCard > strong {
+  color: #342922;
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+
+.card {
+  padding: 15px;
+}
+
+.transactionsCard {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cardHeading h1,
+.cardHeading h2,
+.summaryHeading h2 {
+  margin: 0;
+  color: #44372f;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.cardHeading p {
+  margin: 12px 0 0;
+  color: #988a7e;
+  font-size: 9px;
+}
+
+.transactionList {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transaction {
+  display: grid;
+  min-height: 44px;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid #eee6dc;
+}
+
+.transactionArrow {
+  display: flex;
+  color: #9a8b7f;
+}
+
+.transactionArrow svg {
+  width: 12px;
+  height: 12px;
+}
+
+.transactionInfo,
+.transactionAmount {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.transactionInfo strong,
+.transactionAmount strong {
+  overflow: hidden;
+  color: #4a3c33;
+  font-size: 9px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transactionInfo small,
+.transactionAmount small {
+  color: #9a8d81;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.transactionAmount {
+  justify-items: end;
+}
+
+.transactionAmount strong {
+  font-weight: 650;
+}
+
+.chartCard {
+  @apply flex flex-col;
+  min-height: 275px;
+}
+
+.chartCard .cardHeading p {
+  margin-top: 11px;
+}
+
+.chart {
+  position: relative;
+  min-height: 120px;
+  flex: 1;
+  margin-top: 15px;
+  padding-left: 29px;
+}
+
+.axisLabels {
+  position: absolute;
+  inset: 4px auto 1px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #a19386;
+  font-size: 8px;
+}
+
+.chartGrid {
+  position: absolute;
+  inset: 5px 2px 3px 29px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.chartGrid i {
+  display: block;
+  height: 1px;
+  background: #e8ded2;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px 24px;
+  margin-top: 12px;
+  color: #51443b;
+  font-size: 9px;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #392d26;
+}
+
+.summaryGrid {
+  @apply grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summaryCard {
+  min-height: 118px;
+  padding: 15px 14px;
+}
+
+.summaryHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.summaryHeading h2 {
+  font-size: 12px;
+}
+
+.summaryHeading span {
+  color: #9c8e81;
+  font-size: 7px;
+  white-space: nowrap;
+}
+
+.summaryCard > p {
+  margin: 35px 0 0;
+  color: #9b8d81;
+  font-size: 9px;
+  text-align: center;
+}
+
+.footer {
+  @apply flex shrink-0 items-center justify-between;
+  min-height: 33px;
+  gap: 10px;
+  margin: 0 -18px -10px;
+  padding: 0 18px;
+  border-top: 1px solid rgba(221, 209, 192, .75);
+  color: #9b8d81;
+  background: rgba(250, 243, 231, .94);
+  font-size: 9px;
+}
+
+.footer nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.footer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: #6f4b35;
+}
+
+@media (min-width: 1450px) {
+  .content {
+    padding: 25px 25px 12px;
+  }
+
+  .footer {
+    margin: 0 -25px -12px;
+    padding-right: 25px;
+    padding-left: 25px;
+  }
+
+  .workspaceGrid {
+    gap: 17px 18px;
+  }
+
+  .metricCard {
+    min-height: 94px;
+  }
+
+  .chartCard {
+    min-height: 330px;
+  }
+
+  .transaction {
+    min-height: 47px;
+  }
+
+  .summaryCard {
+    min-height: 132px;
+  }
+}
+
+@media (max-width: 1050px) {
+  .workspaceGrid {
+    grid-template-columns: minmax(0, 1.7fr) minmax(250px, 1fr);
+    gap: 12px;
+  }
+
+  .metricsGrid {
+    gap: 9px;
+  }
+
+  .metricCard {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .card {
+    padding: 13px;
+  }
+}
+
+@media (max-width: 760px) {
+  .shell {
+    display: block;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    padding: 11px 14px 9px;
+  }
+
+  .brand {
+    margin-bottom: 10px;
+  }
+
+  .navigation {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    margin: 0;
+    padding-bottom: 2px;
+  }
+
+  .navLink {
+    min-height: 33px;
+    flex: 0 0 auto;
+    padding: 0 9px;
+    font-size: 10px;
+  }
+
+  .main {
+    min-height: calc(100svh - 103px);
+  }
+
+  .workspaceGrid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .metricsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .transactionsCard {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .transaction {
+    min-height: 42px;
+  }
+
+  .chartCard {
+    min-height: 265px;
+  }
+
+  .summaryGrid {
+    grid-column: 1;
+  }
+
+  .summaryCard > p {
+    margin-top: 27px;
+  }
+}
+
+@media (max-width: 520px) {
+  .topbar {
+    height: 43px;
+    flex-basis: 43px;
+    gap: 11px;
+    padding: 0 12px;
+  }
+
+  .content {
+    padding: 12px 11px 8px;
+  }
+
+  .metricsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .metricCard {
+    min-height: 78px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .summaryCard {
+    min-height: 105px;
+  }
+
+  .footer {
+    min-height: 50px;
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
