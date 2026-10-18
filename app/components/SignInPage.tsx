@@ -65,7 +65,7 @@ export default function SignInPage() {
       <section
         className="auth-panel"
         aria-label="Sign in"
-        style={{ backgroundImage: `linear-gradient(90deg, rgba(246, 237, 222, .08), rgba(246, 237, 222, .08)), url("${coffeeBeans.src}")` }}
+        style={{ backgroundImage: `linear-gradient(90deg, rgba(246, 237, 222, .42), rgba(246, 237, 222, .42)), url("${coffeeBeans.src}")` }}
       >
         <div className="auth-card">
           {/* LOGIN SECTION START */}
@@ -116,10 +116,6 @@ export default function SignInPage() {
         </div>
         <footer className="auth-footer">
           <span>© 2026 BOARDS</span>
-          <span aria-hidden="true">·</span>
-          <a href="#privacy">Privacy</a>
-          <span aria-hidden="true">·</span>
-          <a href="mailto:support@mugandbean.cafe">Help Center</a>
         </footer>
       </section>
       

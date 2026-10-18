@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import ProfileBadge from "../ProfileBadge";
 import WorkspaceRoleGuard from "../WorkspaceRoleGuard";
+import { PermissionRouteGuard, useAccessControl } from "../AccessControl";
 import brandImage from "../../../images/ima.png";
 import beansImage from "../../../images/image.png";
 
@@ -10,25 +11,26 @@ export type InventoryRole = "admin" | "user";
 
 const links = [
   ["Categories", "categories", "▱"], ["Inventory Items", "items", "◇"], ["Products", "products", "◇"], ["Services", "services", "▥"],
-  ["Assets", "assets", "▤"], ["Add-ons", "add-ons", "♧"],
+  ["Recipes", "recipes", "☷"], ["Assets", "assets", "▤"], ["Add-ons", "add-ons", "♧"],
   ["Stock Count", "stock-count", "▣"], ["Stock Transfer", "stock-transfer", "♧"],
 ] as const;
 
-export function InventoryLayout({ role, title, search, onSearchChange, createLabel = "Create New", onCreate, children }: { role: InventoryRole; title: string; search: string; onSearchChange: (value: string) => void; createLabel?: string; onCreate?: () => void; children: ReactNode }) {
+export function InventoryLayout({ role, title, search, onSearchChange, createLabel = "Create New", createPermission = "inventory.create", onCreate, children }: { role: InventoryRole; title: string; search: string; onSearchChange: (value: string) => void; createLabel?: string; createPermission?: string; onCreate?: () => void; children: ReactNode }) {
   const base = `/dashboard/${role}/inventory`;
-  return <div className="grid min-h-svh w-full bg-[#f7f0e7] text-[#392d26] md:grid-cols-[172px_192px_minmax(0,1fr)]">
+  const { can } = useAccessControl();
+  return <PermissionRouteGuard permission="inventory.view" fallback={`/dashboard/${role}`}><div className="grid min-h-svh w-full bg-[#f7f0e7] text-[#392d26] md:grid-cols-[172px_192px_minmax(0,1fr)]">
     <WorkspaceRoleGuard role={role} />
     <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] md:sticky md:top-0 md:h-svh">
       <Link href="/" className="mb-5 flex items-center gap-2 px-1 text-white no-underline"><Image src={brandImage} alt="Boards Café" width={32} height={32} className="rounded-full"/><strong className="text-base tracking-tight">BOARDS</strong></Link>
       <nav className="grid content-start gap-1">
-        {[['Home',`/dashboard/${role}`,'⌂'],['Transactions',`/dashboard/${role}/transactions`,'⇄'],['Inventory',base,'◇'],['Contacts',`/dashboard/${role}/contacts`,'♧'],['Reports',`/dashboard/${role}/reports`,'▥'], ...(role === 'admin' ? [['Staff Management','/dashboard/admin/account/staff-accounts','♧']] : [])].map(([label,href,icon])=><Link key={label} href={href} className={`flex min-h-9 items-center gap-2.5 rounded-md px-2.5 text-xs no-underline ${label==='Inventory'?'bg-[#805336] text-white':'text-[#cbbcaf] hover:bg-[#805336] hover:text-white'}`}><span>{icon}</span>{label}</Link>)}
+        {[['Home',`/dashboard/${role}`,'⌂'],['Transactions',`/dashboard/${role}/transactions`,'⇄'],['Inventory',base,'◇'],['Contacts',`/dashboard/${role}/contacts`,'♧'],['Reports',`/dashboard/${role}/reports`,'▥'], ...(role === 'admin' && can('users.view') ? [['Management','/dashboard/admin/account/staff-accounts','♧']] : [])].filter(([label])=>label==='Home'?can('dashboard.view'):label==='Transactions'?can(['sales.view','purchasing.view','finance.view','production.view']):label==='Inventory'?can('inventory.view'):label==='Contacts'?can('contacts.view'):label==='Reports'?can('reports.view'):true).map(([label,href,icon])=><Link key={label} href={href} className={`flex min-h-9 items-center gap-2.5 rounded-md px-2.5 text-xs no-underline ${label==='Inventory'?'bg-[#805336] text-white':'text-[#cbbcaf] hover:bg-[#805336] hover:text-white'}`}><span>{icon}</span>{label}</Link>)}
       </nav>
       <ProfileBadge role={role} />
     </aside>
 
     <aside className="flex flex-col border-b border-[#e9dfd3] bg-[#f1e7d7] px-3 py-3 md:sticky md:top-0 md:h-svh md:border-b-0 md:border-r md:px-3.5 md:py-4">
       <Link href={base} className="mb-3 flex items-center gap-2 px-1.5 text-[13px] font-semibold text-[#432f22] no-underline">Inventory</Link>
-      <nav className="grid content-start gap-1">{links.map(([label,path,icon])=><Link key={path} href={`${base}/${path}`} aria-current={label===title?'page':undefined} className={`flex min-h-8 items-center gap-2 rounded-md px-2 text-[10px] no-underline transition ${label===title?'bg-[#eadcc8] font-medium text-[#4d3828]':'text-[#78695c] hover:bg-[#eadcc8] hover:text-[#4d3828]'}`}><span className="w-4 text-center">{icon}</span>{label}</Link>)}</nav>
+      <nav className="grid content-start gap-1">{links.filter(([label]) => label !== "Recipes" || can("recipes.view")).map(([label,path,icon])=><Link key={path} href={`${base}/${path}`} aria-current={label===title?'page':undefined} className={`flex min-h-8 items-center gap-2 rounded-md px-2 text-[10px] no-underline transition ${label===title?'bg-[#eadcc8] font-medium text-[#4d3828]':'text-[#78695c] hover:bg-[#eadcc8] hover:text-[#4d3828]'}`}><span className="w-4 text-center">{icon}</span>{label}</Link>)}</nav>
     </aside>
 
     <main className="relative flex min-h-svh min-w-0 flex-col bg-cover bg-center" style={{backgroundImage:`linear-gradient(rgba(249,244,236,.78),rgba(249,244,236,.78)),url("${beansImage.src}")`}}>
@@ -36,12 +38,11 @@ export function InventoryLayout({ role, title, search, onSearchChange, createLab
         <div className="flex min-w-fit items-center gap-2 text-[10px] text-[#918477]"><Link href={`/dashboard/${role}`}>Home</Link><span>›</span><span>{title}</span></div>
         <label className="flex h-7 min-w-40 flex-1 items-center gap-2 rounded-md border border-[#e6dbcd] bg-white/90 px-2.5"><span className="text-[#8e8074]">⌕</span><input type="search" value={search} onChange={(e)=>onSearchChange(e.target.value)} placeholder={`Search ${title.toLowerCase()} or add filters...`} className="min-w-0 flex-1 bg-transparent text-[10px] outline-none placeholder:text-[#a09286]"/><kbd className="text-[9px]">⌘K</kbd></label>
         <button type="button" className="hidden h-7 w-11 rounded-md border border-[#e5dacd] bg-white text-[11px] md:block" title="Export">↓</button>
-        {onCreate && <button type="button" onClick={onCreate} className="ml-auto flex h-7 items-center gap-1 rounded-md bg-[#28180f] px-2.5 text-[10px] font-medium text-white hover:bg-[#4a2d1b]">＋ {createLabel}</button>}
+        {onCreate && can(createPermission) && <button type="button" onClick={onCreate} className="ml-auto flex h-7 items-center gap-1 rounded-md bg-[#28180f] px-2.5 text-[10px] font-medium text-white hover:bg-[#4a2d1b]">＋ {createLabel}</button>}
       </header>
       {children}
-      <footer className="relative z-10 flex min-h-7 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-[#e8ded2] bg-[#fbf6ed]/95 px-3 text-[8px] text-[#9b8d81] sm:px-4"><span>© Copyright Kayko 2021 - 2026</span><nav className="flex gap-3"><a href="#">Support</a><a href="#">Terms</a><a href="#">Privacy policy</a></nav></footer>
     </main>
-  </div>;
+  </div></PermissionRouteGuard>;
 }
 
 export function InventoryDialog({title, description, onClose, children}:{title:string;description:string;onClose:()=>void;children:ReactNode}){

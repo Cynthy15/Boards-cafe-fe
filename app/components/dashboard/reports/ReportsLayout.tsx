@@ -4,17 +4,33 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import WorkspaceRoleGuard from "../WorkspaceRoleGuard";
+import ProfileBadge from "../ProfileBadge";
+import { PermissionRouteGuard, useAccessControl } from "../AccessControl";
 
 import brandImage from "../../../images/ima.png";
 import beansImage from "../../../images/image.png";
 
 export type ReportsRole = "admin" | "user";
-export type ReportTitle = "Reports Overview" | "Sales Report" | "Operations Report";
+export type ReportTitle =
+  | "Reports Overview"
+  | "Daily Summary"
+  | "Sales Performance"
+  | "Inventory & Reorder"
+  | "Production & Waste"
+  | "Purchasing & Suppliers"
+  | "Expense & Profit/Loss"
+  | "Audit & Tax Compliance"
+  | "Operations Report";
 
 const reportLinks: { label: ReportTitle; path: string; icon: string }[] = [
   { label: "Reports Overview", path: "", icon: "▤" },
-  { label: "Sales Report", path: "/sale-tax", icon: "▥" },
-  { label: "Operations Report", path: "/ebm-x", icon: "▣" },
+  { label: "Daily Summary", path: "/daily", icon: "◷" },
+  { label: "Sales Performance", path: "/sales", icon: "▥" },
+  { label: "Inventory & Reorder", path: "/inventory", icon: "◇" },
+  { label: "Production & Waste", path: "/production", icon: "◫" },
+  { label: "Purchasing & Suppliers", path: "/purchases", icon: "▣" },
+  { label: "Expense & Profit/Loss", path: "/profit-loss", icon: "◒" },
+  { label: "Audit & Tax Compliance", path: "/compliance", icon: "✓" },
 ];
 
 export function ReportsLayout({
@@ -41,8 +57,10 @@ export function ReportsLayout({
   children: ReactNode;
 }) {
   const base = `/dashboard/${role}/reports`;
+  const { can } = useAccessControl();
 
   return (
+    <PermissionRouteGuard permission="reports.view" fallback={`/dashboard/${role}`}>
     <div className="grid min-h-svh w-full bg-[#f7f0e7] text-[#392d26] md:grid-cols-[172px_156px_minmax(0,1fr)] print:block">
       <WorkspaceRoleGuard role={role} />
       <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] md:sticky md:top-0 md:h-svh print:hidden">
@@ -57,8 +75,8 @@ export function ReportsLayout({
             { label: "Inventory", href: `/dashboard/${role}/inventory` },
             { label: "Contacts", href: `/dashboard/${role}/contacts` },
             { label: "Reports", href: base },
-            ...(role === "admin" ? [{ label: "Staff Management", href: "/dashboard/admin/account/staff-accounts" }] : []),
-          ].map(({ label, href }) => (
+            ...(role === "admin" && can("users.view") ? [{ label: "Management", href: "/dashboard/admin/account/staff-accounts" }] : []),
+          ].filter(({ label }) => label === "Home" ? can("dashboard.view") : label === "Transactions" ? can(["sales.view", "purchasing.view", "finance.view", "production.view"]) : label === "Inventory" ? can("inventory.view") : label === "Contacts" ? can("contacts.view") : label === "Reports" ? can("reports.view") : true).map(({ label, href }) => (
             <Link
               key={label}
               href={href}
@@ -69,13 +87,10 @@ export function ReportsLayout({
             </Link>
           ))}
         </nav>
-        <div className="mt-auto border-t border-[#4b362a] pt-3">
-          {role === "admin" ? <Link href="/dashboard/admin/account" title="Account settings" aria-label="Open account settings" className="-mx-1 mb-2 hidden rounded-md px-1 py-1.5 text-[11px] text-inherit no-underline transition hover:bg-[#805336] hover:text-white md:block">CD</Link> : <div className="mb-2 hidden text-[11px] md:block">US</div>}
-          <Link href="/" className="flex min-h-8 items-center gap-2 rounded-md px-2.5 text-xs text-[#cbbcaf] no-underline transition hover:bg-[#805336] hover:text-white" aria-label="Logout">↪ Logout</Link>
-        </div>
+        <ProfileBadge role={role} />
       </aside>
 
-      <aside className="flex flex-col border-b border-[#e9dfd3] bg-[#f1e7d7] px-3 py-3 md:sticky md:top-0 md:h-svh md:border-b-0 md:border-r md:px-3.5 md:py-4 print:hidden">
+      <aside className="flex flex-col border-b border-[#e9dfd3] bg-[#f1e7d7] px-3 py-3 md:sticky md:top-0 md:h-svh md:overflow-y-auto md:border-b-0 md:border-r md:px-3.5 md:py-4 print:hidden">
         <Link href={base} className="mb-3 flex items-center gap-2 px-1.5 text-[13px] font-semibold text-[#432f22] no-underline">Reports</Link>
         <nav aria-label="Reports navigation" className="grid content-start gap-1">
           {reportLinks.map(({ label, path, icon }) => (
@@ -128,11 +143,8 @@ export function ReportsLayout({
 
         {children}
 
-        <footer className="relative z-10 flex min-h-7 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-[#e8ded2] bg-[#fbf6ed]/95 px-3 text-[8px] text-[#9b8d81] sm:px-4 print:hidden">
-          <span>© Copyright Kayko 2021 - 2026</span>
-          <nav aria-label="Footer links" className="flex items-center gap-3"><a href="#">Support</a><a href="#">Terms</a><a href="#">Privacy policy</a></nav>
-        </footer>
       </main>
     </div>
+    </PermissionRouteGuard>
   );
 }

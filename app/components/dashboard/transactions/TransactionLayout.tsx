@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import ProfileBadge from "../ProfileBadge";
 import WorkspaceRoleGuard from "../WorkspaceRoleGuard";
+import { PermissionRouteGuard, useAccessControl, type PermissionRequirement } from "../AccessControl";
 
 import brandImage from "../../../images/ima.png";
 import beansImage from "../../../images/image.png";
@@ -10,13 +11,11 @@ import beansImage from "../../../images/image.png";
 export type TransactionRole = "admin" | "user";
 
 const transactionLinks = [
-  { label: "Quotations", path: "" },
   { label: "Sales", path: "/sales" },
   { label: "Purchases", path: "/purchases" },
   { label: "Production", path: "/production" },
   { label: "Expenses", path: "/expenses" },
   { label: "Orders", path: "/orders" },
-  { label: "Shifts", path: "/shifts" },
 ];
 
 type TransactionLayoutProps = {
@@ -24,6 +23,8 @@ type TransactionLayoutProps = {
   title: string;
   search: string;
   createLabel?: string;
+  requiredPermission?: PermissionRequirement;
+  createPermission?: PermissionRequirement;
   onSearchChange: (value: string) => void;
   onCreate?: () => void;
   children: ReactNode;
@@ -34,13 +35,17 @@ export function TransactionLayout({
   title,
   search,
   createLabel,
+  requiredPermission,
+  createPermission,
   onSearchChange,
   onCreate,
   children,
 }: TransactionLayoutProps) {
   const base = `/dashboard/${role}/transactions`;
+  const { can } = useAccessControl();
 
   return (
+    <PermissionRouteGuard permission={requiredPermission} fallback={`/dashboard/${role}`}>
     <div className="grid min-h-svh w-full bg-[#f7f0e7] text-[#392d26] md:grid-cols-[172px_156px_minmax(0,1fr)]">
       <WorkspaceRoleGuard role={role} />
       <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] md:sticky md:top-0 md:h-svh">
@@ -55,8 +60,8 @@ export function TransactionLayout({
             { label: "Inventory", href: `/dashboard/${role}/inventory` },
             { label: "Contacts", href: `/dashboard/${role}/contacts` },
             { label: "Reports", href: `/dashboard/${role}/reports` },
-            ...(role === "admin" ? [{ label: "Staff Management", href: "/dashboard/admin/account/staff-accounts" }] : []),
-          ].map(({ label, href }) => (
+            ...(role === "admin" && can("users.view") ? [{ label: "Management", href: "/dashboard/admin/account/staff-accounts" }] : []),
+          ].filter(({ label }) => label === "Home" ? can("dashboard.view") : label === "Transactions" ? can(["sales.view", "purchasing.view", "finance.view", "production.view"]) : label === "Inventory" ? can("inventory.view") : label === "Contacts" ? can("contacts.view") : can("reports.view")).map(({ label, href }) => (
             <Link
               key={label}
               href={href}
@@ -76,7 +81,7 @@ export function TransactionLayout({
           Transactions
         </Link>
         <nav aria-label="Transaction navigation" className="grid content-start gap-1">
-          {transactionLinks.map(({ label, path }) => (
+          {transactionLinks.filter(({ label }) => label === "Sales" || label === "Orders" ? can("sales.view") : label === "Purchases" ? can("purchasing.view") : label === "Production" ? can("production.view") : can("finance.view")).map(({ label, path }) => (
             <Link
               key={label}
               href={`${base}${path}`}
@@ -112,19 +117,16 @@ export function TransactionLayout({
               className="min-w-0 flex-1 bg-transparent text-[10px] outline-none placeholder:text-[#a09286]"
             />
           </label>
-          {onCreate && <button type="button" onClick={onCreate} className="ml-auto flex h-7 items-center gap-1 rounded-md bg-[#28180f] px-2.5 text-[10px] font-medium text-white hover:bg-[#4a2d1b]">
+          {onCreate && can(createPermission) && <button type="button" onClick={onCreate} className="ml-auto flex h-7 items-center gap-1 rounded-md bg-[#28180f] px-2.5 text-[10px] font-medium text-white hover:bg-[#4a2d1b]">
             ＋ {createLabel ?? "Create New"}
           </button>}
         </header>
 
         {children}
 
-        <footer className="relative z-10 flex min-h-7 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-[#e8ded2] bg-[#fbf6ed]/95 px-3 text-[8px] text-[#9b8d81] sm:px-4">
-          <span>© Copyright Kayko 2021 - 2026</span>
-          <nav aria-label="Footer links" className="flex items-center gap-3"><a href="#">Support</a><a href="#">Terms</a><a href="#">Privacy policy</a></nav>
-        </footer>
       </main>
     </div>
+    </PermissionRouteGuard>
   );
 }
 

@@ -1,5 +1,5 @@
-import QuotationsPage from "../../../components/dashboard/transactions/QuotationsPage";
+import TransactionsLandingPage from "../../../components/dashboard/transactions/TransactionsLandingPage";
 
 export default function AdminTransactions() {
-	return <QuotationsPage role="admin" />;
+	return <TransactionsLandingPage role="admin" />;
 }

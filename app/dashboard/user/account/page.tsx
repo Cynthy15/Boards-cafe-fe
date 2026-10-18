@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+import UserProfilePage from "../../../components/dashboard/UserProfilePage";
 
 export default function UserAccountPage() {
-  // Account management is restricted to administrators.
-  redirect("/dashboard/user");
+  return <UserProfilePage />;
 }

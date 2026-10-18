@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import ProfileBadge from "../ProfileBadge";
 import WorkspaceRoleGuard from "../WorkspaceRoleGuard";
+import { PermissionRouteGuard, useAccessControl } from "../AccessControl";
 
 import brandImage from "../../../images/ima.png";
 import beansImage from "../../../images/image.png";
@@ -41,8 +42,10 @@ export function ContactsLayout({
   children: ReactNode;
 }) {
   const base = `/dashboard/${role}/contacts`;
+  const { can } = useAccessControl();
 
   return (
+    <PermissionRouteGuard permission="contacts.view" fallback={`/dashboard/${role}`}>
     <div className="grid min-h-svh w-full bg-[#f7f0e7] text-[#392d26] md:grid-cols-[172px_156px_minmax(0,1fr)]">
       <WorkspaceRoleGuard role={role} />
       <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] md:sticky md:top-0 md:h-svh">
@@ -57,8 +60,8 @@ export function ContactsLayout({
             { label: "Inventory", href: `/dashboard/${role}/inventory` },
             { label: "Contacts", href: base },
             { label: "Reports", href: `/dashboard/${role}/reports` },
-            ...(role === "admin" ? [{ label: "Staff Management", href: "/dashboard/admin/account/staff-accounts" }] : []),
-          ].map(({ label, href }) => (
+            ...(role === "admin" && can("users.view") ? [{ label: "Management", href: "/dashboard/admin/account/staff-accounts" }] : []),
+          ].filter(({ label }) => label === "Home" ? can("dashboard.view") : label === "Transactions" ? can(["sales.view", "purchasing.view", "finance.view", "production.view"]) : label === "Inventory" ? can("inventory.view") : label === "Contacts" ? can("contacts.view") : label === "Reports" ? can("reports.view") : true).map(({ label, href }) => (
             <Link
               key={label}
               href={href}
@@ -116,12 +119,9 @@ export function ContactsLayout({
 
         {children}
 
-        <footer className="relative z-10 flex min-h-7 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-[#e8ded2] bg-[#fbf6ed]/95 px-3 text-[8px] text-[#9b8d81] sm:px-4">
-          <span>© Copyright Kayko 2021 - 2026</span>
-          <nav aria-label="Footer links" className="flex items-center gap-3"><a href="#">Support</a><a href="#">Terms</a><a href="#">Privacy policy</a></nav>
-        </footer>
       </main>
     </div>
+    </PermissionRouteGuard>
   );
 }
 

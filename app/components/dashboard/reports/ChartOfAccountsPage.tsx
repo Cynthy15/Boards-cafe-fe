@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { boardsApi, subscribeToApiDataChanges, type ApiRecord } from "../../../../lib/api-client";
+import { retryReportRequest } from "./ReportKit";
 import { ReportsLayout, type ReportsRole } from "./ReportsLayout";
 
 type ReportData = { sales: ApiRecord; expenses: ApiRecord; purchases: ApiRecord; inventory: ApiRecord };
@@ -21,7 +22,11 @@ export default function ChartOfAccountsPage({ role }: { role: ReportsRole }) {
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [sales, expenses, purchases, inventory] = await Promise.all([boardsApi.reports.sales(), boardsApi.reports.expenses(), boardsApi.reports.purchases(), boardsApi.reports.inventory()]);
+      // Keep hosted report requests spaced out; concurrent reads can be throttled.
+      const sales = await retryReportRequest(() => boardsApi.reports.sales());
+      const expenses = await retryReportRequest(() => boardsApi.reports.expenses());
+      const purchases = await retryReportRequest(() => boardsApi.reports.purchases());
+      const inventory = await retryReportRequest(() => boardsApi.reports.inventory());
       setData({ sales, expenses, purchases, inventory });
       setError("");
     } catch (requestError) {

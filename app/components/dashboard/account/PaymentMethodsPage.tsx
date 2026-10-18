@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { boardsApi, listApiRecords, type ApiRecord } from "../../../../lib/api-client";
+import { useAccessControl } from "../AccessControl";
 import AccountShell from "./AccountShell";
 import { DataTable, Dialog, Field, RadioGroup, fieldClass, hintClass, primaryButton, rowAction, secondaryButton, useToast, type Column } from "./ui";
 
@@ -25,6 +26,7 @@ function toMethod(record: ApiRecord): PaymentMethod {
 }
 
 export default function PaymentMethodsPage() {
+  const { can } = useAccessControl();
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<{ id: string | null; draft: Draft } | null>(null);
@@ -53,7 +55,7 @@ export default function PaymentMethodsPage() {
     { key: "featured", label: "Default", sortValue: (m) => (m.featured ? "Yes" : "No"), render: (m) => (m.featured ? "Yes" : "No") },
     {
       key: "actions", label: "Actions", sortValue: () => "",
-      render: (m) => <span className="flex gap-3"><button type="button" className={rowAction} onClick={() => { setErrors({}); setEditing({ id: m.id, draft: { name: m.name, type: m.type, description: m.description, featured: m.featured ? "yes" : "no" } }); }}>Edit</button><button type="button" className={rowAction} onClick={() => void remove(m)}>Deactivate</button></span>,
+      render: (m) => can("settings.update") ? <span className="flex gap-3"><button type="button" className={rowAction} onClick={() => { setErrors({}); setEditing({ id: m.id, draft: { name: m.name, type: m.type, description: m.description, featured: m.featured ? "yes" : "no" } }); }}>Edit</button><button type="button" className={rowAction} onClick={() => void remove(m)}>Deactivate</button></span> : null,
     },
   ];
 

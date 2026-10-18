@@ -7,12 +7,14 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { boardsApi, listApiRecords, subscribeToApiDataChanges, type ApiRecord } from "../../../lib/api-client";
 import WorkspaceRoleGuard from "./WorkspaceRoleGuard";
+import { useAccessControl } from "./AccessControl";
 import beansImage from "../../images/image.png";
 import brandImage from "../../images/ima.png";
 
 type DashboardPageProps = { role: "admin" | "user" };
 type IconName = "home" | "transactions" | "inventory" | "contacts" | "reports" | "account" | "activity" | "arrow";
 type DashboardReports = { sales: ApiRecord; expenses: ApiRecord; purchases: ApiRecord };
+type ActivityMetric = { label: string; value: number; note: string };
 
 const navigation: { label: string; icon: IconName; href: string }[] = [
 	{ label: "Home", icon: "home", href: "" },
@@ -40,14 +42,62 @@ function records(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is ApiRecord => !!item && typeof item === "object") : [];
 }
 
-function number(value: unknown) {
+function numericValue(value: unknown) {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed.toLocaleString() : "0";
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
 function localDate(date = new Date()) {
   const offset = date.getTimezoneOffset() * 60_000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function TransactionActivityChart({ items }: { items: ActivityMetric[] }) {
+  const width = 440;
+  const height = 226;
+  const bounds = { top: 26, right: 14, bottom: 50, left: 52 };
+  const chartWidth = width - bounds.left - bounds.right;
+  const chartHeight = height - bounds.top - bounds.bottom;
+  const highestValue = Math.max(1, ...items.map(({ value }) => value));
+  const tickStep = Math.max(1, Math.ceil(highestValue / 3));
+  const maximum = tickStep * 3;
+  const ticks = [0, 1, 2, 3].map((step) => step * tickStep);
+  const shortLabels: Record<string, string> = { "Completed sales": "Sales" };
+  const barSlot = chartWidth / items.length;
+  const barWidth = Math.min(58, barSlot * 0.52);
+  const y = (value: number) => bounds.top + chartHeight - (value / maximum) * chartHeight;
+
+  return (
+    <div className="mt-3 w-full" role="img" aria-label="Bar chart showing transaction counts for orders, completed sales, expenses, and purchases">
+      <svg className="block h-auto w-full overflow-visible" viewBox={`0 0 ${width} ${height}`} aria-labelledby="transaction-chart-title transaction-chart-description">
+        <title id="transaction-chart-title">Transaction activity</title>
+        <desc id="transaction-chart-description">A bar chart comparing counts of orders, completed sales, expenses, and purchases in the selected period.</desc>
+        {ticks.map((tick) => {
+          const tickY = y(tick);
+          return <g key={tick}>
+            <line x1={bounds.left} x2={width - bounds.right} y1={tickY} y2={tickY} stroke="#eadfd2" strokeWidth="1" />
+            <text x={bounds.left - 9} y={tickY + 5} textAnchor="end" fill="#8b7d70" fontSize="12">{tick.toLocaleString()}</text>
+          </g>;
+        })}
+        <line x1={bounds.left} x2={bounds.left} y1={bounds.top} y2={bounds.top + chartHeight} stroke="#cbbcaf" strokeWidth="1" />
+        <line x1={bounds.left} x2={width - bounds.right} y1={bounds.top + chartHeight} y2={bounds.top + chartHeight} stroke="#cbbcaf" strokeWidth="1" />
+        <text x="15" y={bounds.top + chartHeight / 2} transform={`rotate(-90 15 ${bounds.top + chartHeight / 2})`} fill="#76685c" fontSize="12" textAnchor="middle">Count</text>
+        {items.map((item, index) => {
+          const barHeight = (item.value / maximum) * chartHeight;
+          const x = bounds.left + barSlot * index + (barSlot - barWidth) / 2;
+          const barY = y(item.value);
+          return <g key={item.label}>
+            <rect x={x} y={barY} width={barWidth} height={barHeight} rx="4" fill="#805336">
+              <title>{`${item.label}: ${item.value.toLocaleString()} transactions`}</title>
+            </rect>
+            <text x={x + barWidth / 2} y={Math.max(bounds.top - 7, barY - 7)} textAnchor="middle" fill="#392d26" fontSize="13" fontWeight="600">{item.value.toLocaleString()}</text>
+            <text x={x + barWidth / 2} y={bounds.top + chartHeight + 20} textAnchor="middle" fill="#64584f" fontSize="12">{shortLabels[item.label] ?? item.label}</text>
+          </g>;
+        })}
+        <text x={bounds.left + chartWidth / 2} y={height - 7} textAnchor="middle" fill="#76685c" fontSize="12">Transaction type</text>
+      </svg>
+    </div>
+  );
 }
 
 function Icon({ name }: { name: IconName }) {
@@ -66,7 +116,8 @@ function Icon({ name }: { name: IconName }) {
 
 export default function DashboardPage({ role }: DashboardPageProps) {
   const base = `/dashboard/${role}`;
-  const mainNavigation = role === "admin" ? [...navigation, { label: "Staff Management", icon: "contacts" as const, href: "/account/staff-accounts" }] : navigation;
+  const { can } = useAccessControl();
+  const mainNavigation = (role === "admin" ? [...navigation, { label: "Management", icon: "contacts" as const, href: "/account/staff-accounts" }] : navigation).filter(({ label }) => label === "Home" ? can("dashboard.view") : label === "Transactions" ? can(["sales.view", "purchasing.view", "finance.view", "production.view"]) : label === "Inventory" ? can("inventory.view") : label === "Contacts" ? can("contacts.view") : label === "Reports" ? can("reports.view") : can("users.view"));
   const [summary, setSummary] = useState<ApiRecord | null>(null);
   const [orders, setOrders] = useState<ApiRecord[]>([]);
   const [reports, setReports] = useState<DashboardReports | null>(null);
@@ -107,11 +158,11 @@ export default function DashboardPage({ role }: DashboardPageProps) {
     return key.includes("count") || key.includes("items") ? Number(summary[key] ?? 0).toLocaleString() : money(summary[key]);
   };
 
-  const transactionCounts = reports && summary ? [
-    ["Orders", number(summary.order_count), "All orders in the selected period"],
-    ["Completed sales", number(reports.sales.paid_orders), "Paid orders from the sales report"],
-    ["Expenses", number(reports.expenses.expense_count), "Expense records from the report"],
-    ["Purchases", number(reports.purchases.purchase_count), "Purchase records from the report"],
+  const transactionCounts: ActivityMetric[] = reports && summary ? [
+    { label: "Orders", value: numericValue(summary.order_count), note: "All orders in the selected period" },
+    { label: "Completed sales", value: numericValue(reports.sales.paid_orders), note: "Paid orders from the sales report" },
+    { label: "Expenses", value: numericValue(reports.expenses.expense_count), note: "Expense records from the report" },
+    { label: "Purchases", value: numericValue(reports.purchases.purchase_count), note: "Purchase records from the report" },
   ] : [];
 
   const reportCards = reports ? [
@@ -145,10 +196,9 @@ export default function DashboardPage({ role }: DashboardPageProps) {
               <ul className="m-0 list-none p-0">{orders.map((order, index) => { const id = String(order.id ?? order.order_number ?? order.reference ?? `order-${index}`); const amount = order.total_amount ?? order.total ?? order.grand_total ?? 0; const status = String(order.status ?? "Order"); const created = String(order.created_at ?? order.order_date ?? order.date ?? ""); return <li key={id} className="grid min-h-11 grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-2 border-b border-[#eee6dc]"><Icon name="arrow"/><span className="grid gap-1 overflow-hidden text-[9px]"><strong className="truncate font-medium">Order #{id}</strong><small className="text-[8px] text-[#9a8d81]">{created ? created.slice(0, 10) : status}</small></span><span className="grid justify-items-end gap-1 text-[9px]"><strong>{money(amount)}</strong><small className="text-[8px] text-[#9a8d81]">{status}</small></span></li>; })}</ul>
               {!orders.length && !loadError && <p className="py-8 text-center text-[10px] text-[#9b8d81]">No orders returned by the API.</p>}
 						</section>
-						<section className="flex min-h-68.75 flex-col rounded-[10px] border border-[#e2d8cb]/90 bg-[#fffdf9]/95 p-3.5 shadow-sm sm:col-span-2 lg:col-span-1 lg:col-start-1 lg:row-start-2"><h2 className="m-0 text-sm font-semibold">Transaction activity</h2><p className="mt-2 text-[9px] text-[#988a7e]">Counts returned by the dashboard and report APIs for the selected period.</p><div className="mt-4 grid flex-1 gap-2 sm:grid-cols-2">{transactionCounts.map(([label, value, note]) => <article key={label} className="rounded-lg border border-[#eee6dc] bg-[#fffaf3] p-3"><p className="m-0 text-[9px] text-[#76685c]">{label}</p><strong className="mt-2 block text-xl leading-none">{value}</strong><p className="mb-0 mt-2 text-[8px] leading-3 text-[#9a8d81]">{note}</p></article>)}{!isLoading && !transactionCounts.length && <p className="m-auto text-center text-[10px] text-[#9b8d81]">No transaction counts were returned by the API.</p>}</div></section>
+						<section className="flex min-h-68.75 flex-col rounded-[10px] border border-[#e2d8cb]/90 bg-[#fffdf9]/95 p-3.5 shadow-sm sm:col-span-2 lg:col-span-1 lg:col-start-1 lg:row-start-2"><h2 className="m-0 text-sm font-semibold">Transaction activity</h2><p className="mt-2 text-[9px] text-[#988a7e]">Counts returned by the dashboard and report APIs for the selected period.</p>{transactionCounts.length ? <><TransactionActivityChart items={transactionCounts}/><div className="mt-3 grid gap-2 sm:grid-cols-2">{transactionCounts.map(({ label, value, note }) => <article key={label} className="rounded-lg border border-[#eee6dc] bg-[#fffaf3] p-3"><p className="m-0 text-[9px] text-[#76685c]">{label}</p><strong className="mt-2 block text-xl leading-none">{value.toLocaleString()}</strong><p className="mb-0 mt-2 text-[8px] leading-3 text-[#9a8d81]">{note}</p></article>)}</div></> : !isLoading && <p className="m-auto text-center text-[10px] text-[#9b8d81]">No transaction counts were returned by the API.</p>}</section>
 						<section aria-label="Top business results" className="grid gap-3.5 sm:col-span-2 sm:grid-cols-3 lg:col-span-2 lg:col-start-1 lg:row-start-3">{reportCards.map(({ title, note, rows }) => <article key={title} className="min-h-[118px] rounded-[10px] border border-[#e2d8cb]/90 bg-[#fffdf9]/95 p-3.5 shadow-sm"><div className="flex justify-between"><h2 className="m-0 text-xs font-semibold">{title}</h2><span className="text-[7px] text-[#9c8e81]">{note}</span></div>{rows.length ? <ul className="mt-3 grid list-none gap-2 p-0">{rows.map(([name, value], index) => <li key={`${name}-${index}`} className="flex items-center justify-between gap-2 text-[9px]"><span className="truncate text-[#66584e]">{name}</span><strong className="shrink-0">{value}</strong></li>)}</ul> : <p className="mt-8 text-center text-[9px] text-[#9b8d81]">No rows returned by the report API.</p>}</article>)}</section>
 					</div>
-					<footer className="-mx-3.5 -mb-3.5 mt-3 flex min-h-8 items-center justify-between border-t border-[#ddd1c0] bg-[#faf3e7]/95 px-3.5 text-[8px] text-[#9b8d81] sm:-mx-[18px] sm:-mb-[18px] sm:px-[18px]"><span>© Copyright Kayko 2021 - 2026</span><nav className="flex gap-3"><a href="#">Support</a><a href="#">Terms</a><a href="#">Privacy policy</a></nav></footer>
 				</div>
 			</main>
 		</div>

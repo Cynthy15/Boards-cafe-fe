@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { boardsApi, listApiRecords, type ApiRecord } from "../../../../lib/api-client";
+import { useAccessControl } from "../AccessControl";
 import { ContactDrawer, ContactsLayout, ContactsTable, contactField, contactLabel, type ContactsRole } from "./ContactsLayout";
 
 type Vendor = { id: number; company: string; contactName: string; email: string; phone: string; tin: string; address: string; status: string };
@@ -32,6 +33,7 @@ function VendorForm({ editing, onClose, onSave, error }: { editing: Vendor | nul
 }
 
 export default function VendorsPage({ role }: { role: ContactsRole }) {
+  const { can } = useAccessControl();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -61,10 +63,10 @@ export default function VendorsPage({ role }: { role: ContactsRole }) {
     } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to save this vendor."); }
   }
 
-  async function deactivate(vendor: Vendor) {
-    if (!window.confirm(`Deactivate ${vendor.company}?`)) return;
-    try { await boardsApi.deactivateSupplier(vendor.id); await loadVendors(); }
-    catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to deactivate this vendor."); }
+  async function remove(vendor: Vendor) {
+    if (!window.confirm(`Delete ${vendor.company}? The API will keep a supplier that is already linked to purchases; deactivate it there instead.`)) return;
+    try { await boardsApi.deleteSupplier(vendor.id); await loadVendors(); }
+    catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to delete this vendor. It may be linked to purchases; deactivate it instead."); }
   }
 
   return (
@@ -78,7 +80,7 @@ export default function VendorsPage({ role }: { role: ContactsRole }) {
         { header: "TIN Number", render: (vendor: Vendor) => vendor.tin || "-" },
         { header: "Address", render: (vendor: Vendor) => vendor.address || "-", className: "max-w-[180px] truncate" },
         { header: "Status", render: (vendor: Vendor) => vendor.status },
-      ]} emptyTitle="No vendors returned by the API" emptyHint="Create a supplier to add the first vendor." onEdit={(vendor) => { setEditing(vendor); setError(""); setOpen(true); }} onDelete={(id) => { const vendor = vendors.find((item) => item.id === id); if (vendor) void deactivate(vendor); }} />}
+      ]} emptyTitle="No vendors returned by the API" emptyHint="Create a supplier to add the first vendor." onEdit={can("purchasing.update") ? (vendor) => { setEditing(vendor); setError(""); setOpen(true); } : undefined} onDelete={can("purchasing.update") ? (id) => { const vendor = vendors.find((item) => item.id === id); if (vendor) void remove(vendor); } : undefined} />}
       {open && <VendorForm editing={editing} onClose={close} onSave={save} error={error} />}
     </ContactsLayout>
   );

@@ -12,11 +12,13 @@ This document describes the staff workflow requested for Boards Café. The front
 | Admin creates roles | Creates and edits named roles with permission IDs returned by the live permission catalogue | `GET/POST/PATCH /roles/` |
 | Admin manages roles | Activates, deactivates, or deletes eligible roles | `POST /roles/{id}/activate/`, `POST /roles/{id}/deactivate/`, `DELETE /roles/{id}/` |
 | Waiter order handoff | Creates or edits a table-bound draft order, then submits it to become pending for payment | `POST/PATCH /sales/orders/`, `POST /sales/orders/{id}/submit/` |
+| Available dine-in tables | Lists only tables the authenticated waiter can select, including active-order and waiter assignment information | `GET /business/{business_id}/tables/available/` |
 | Cashier payment confirmation | Lists pending submitted orders and records one completed payment against the selected order | `GET /sales/orders/`, `POST /finance/payments/` |
-| Cashier shift opening | Lists existing drawer shifts and opens a new shift | `GET/POST /finance/cash-shifts/` |
 | Storekeeper purchase and receiving | Creates/submits a purchase order and records a receipt when goods arrive | `POST /purchasing/purchases/`, `POST /purchasing/purchases/{id}/submit/`, `POST /purchasing/purchases/{id}/receive/` |
 | Purchased stock increase | The backend increases stock when a purchase receipt is recorded | Built into `POST /purchasing/purchases/{id}/receive/` |
 | Sale stock update | Completed-payment responses return stock movement IDs and updated stock information | `POST /finance/payments/` |
+| Production start and completion | Starts an in-progress run with raw-material input/waste, then completes it to add finished-product stock | `GET/POST /production-runs/`, `PATCH /production-runs/{id}/` |
+| Finished-product stock | Shows product quantities and production/sale movements; records an auditable physical count when authorised | `/production-runs/product-stock-balances/`, `/production-runs/product-stock-movements/`, `POST /inventory/product-stock-adjustments/` |
 | Reporting | Dashboard and reports reload their server data after successful API writes | `/dashboard/` and `/reports/*` |
 
 The API already exposes a role and permission catalogue. The UI does not hard-code permission names: the administrator selects the records returned by `GET /roles/permissions/`.
@@ -34,35 +36,29 @@ Create these role records through the Roles & Permissions screen, selecting the 
 
 The backend, not the browser, must enforce every permission. The browser can hide an unavailable action for a clearer experience, but that is not a security boundary.
 
-## Backend changes required before the full requested workflow is possible
+## Server behavior to verify before release
 
 ### 1. Table state integrity
 
-The current order request and response already carry `table`, `service_type`, `guest_count`, and `customer_id`; the frontend sends and displays those API fields. The published contract does not describe the table state transition rules, so the backend must enforce them atomically: mark a table occupied when a dine-in order is opened, prevent conflicting active orders according to business policy, and release it only when the final active order is settled or cancelled. Return the updated table status on every affected order/table response so waiters and cashiers see the same source of truth.
+The published contract now exposes `/business/{business_id}/tables/available/` and returns table availability, the assigned waiter, and the active order. The frontend uses that endpoint for the dine-in selector. Confirm with an authenticated integration test that a dine-in order atomically locks the table, rejects a conflicting waiter, and releases the table only after the order is paid, cancelled, or voided.
 
-### 2. Verify inventory reduction on a sale
+### 2. Verify finished-product inventory reduction on a sale
 
-Purchase receipt correctly increases stock. The current completed-payment response also returns `stock_movement_ids` and `stock_updates`, so inventory consumption belongs on the backend and must not be duplicated in the browser. Validate the following behavior with an authenticated integration test before release:
+Purchase receipt correctly increases raw-material stock. Production now creates finished-product balances, and completed-payment responses return `product_stock_movement_ids` and `product_stock_updates`. Validate the following behavior with an authenticated integration test before release:
 
 1. On purchase receipt, create positive receipt movements (already reflected in balances).
-2. On payment completion, resolve each sold menu product's active recipe and create negative consumption movements for every ingredient.
-3. Reject payment or flag the order for approval if the policy disallows insufficient stock. Do not allow balances to become silently negative.
+2. On production start, deduct the raw input once; on production completion, add the finished output once.
+3. On payment completion, deduct the sold finished product exactly once and do not allow finished-product balances to become silently negative.
 4. On an order cancellation, void, or refund, create the compensating movement according to whether preparation had started. Never edit a historic movement in place.
-5. Return the resulting stock movement IDs and updated availability in the response (these fields are already present in the published payment response).
+5. Return the resulting stock movement IDs and updated product-stock information in the response.
 
 Recommended resources:
 
 - `GET /inventory/movements/` with filters for item, source document, type, and date;
-- an admin-only approved adjustment/count endpoint; and
-- read-only `available_to_sell` values for menu products.
+- `GET /production-runs/product-stock-movements/` for the finished-product ledger; and
+- read-only finished-product balances for menu products.
 
-### 3. Cash-shift closure contract
-
-Cash-shift listing and opening are available. The published `POST /finance/cash-shifts/{id}/close/` request, however, currently accepts only `opening_float` and `notes`; it cannot carry the cash count needed to calculate the variance. The UI therefore allows opening a shift but deliberately does not pretend to close one.
-
-Change the close request to require a decimal `counted_cash` field, with optional notes. The server should then calculate `expected_cash` and `variance`, move the shift to `pending_approval`, and return those values. The existing approve-close action can then move it to `closed` with an approval audit record.
-
-### 4. Payment exceptions
+### 3. Payment exceptions
 
 Payments are immutable, which is correct. Add explicit server-side actions rather than edits:
 
@@ -70,7 +66,7 @@ Payments are immutable, which is correct. Add explicit server-side actions rathe
 - support partial payments if the business accepts them, returning `amount_paid`, `balance_due`, and payment status on each order;
 
 
-### 5. Server-side role enforcement and visibility
+### 4. Server-side role enforcement and visibility
 
 The permission catalogue must include (and every relevant endpoint must enforce) permissions for orders, payments, reports, purchasing, stock receiving, stock adjustments, and configuration. The backend should ensure:
 
@@ -87,7 +83,6 @@ The frontend keeps these screens read-only/unavailable until corresponding serve
 - customer CRUD, customer balances, and customer order history;
 - e-commerce settings and checkout/catalogue configuration;
 - quotations with lines, expiry, conversion to order, and status history;
-- production runs with input consumption, output/waste, batches, and stock movements;
 - asset lifecycle/depreciation and inter-location stock transfers; and
 - a documented services/add-ons contract when those are distinct from stock-controlled menu products.
 

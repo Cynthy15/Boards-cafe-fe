@@ -1,5 +1,5 @@
-import QuotationsPage from "../../../components/dashboard/transactions/QuotationsPage";
+import TransactionsLandingPage from "../../../components/dashboard/transactions/TransactionsLandingPage";
 
 export default function UserTransactions() {
-	return <QuotationsPage role="user" />;
+	return <TransactionsLandingPage role="user" />;
 }

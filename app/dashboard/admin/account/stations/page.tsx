@@ -1,5 +1,5 @@
-import StationsPage from "../../../../components/dashboard/account/StationsPage";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <StationsPage />;
+  redirect("/dashboard/admin/account/business-details");
 }

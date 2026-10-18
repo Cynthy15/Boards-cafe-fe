@@ -1,5 +1,5 @@
-import ShiftsPage from "../../../../components/dashboard/transactions/ShiftsPage";
+import { redirect } from "next/navigation";
 
 export default function AdminShifts() {
-	return <ShiftsPage role="admin" />;
+	redirect("/dashboard/admin/transactions");
 }

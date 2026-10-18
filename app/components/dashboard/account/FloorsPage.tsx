@@ -4,91 +4,113 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { boardsApi, listApiRecords, type ApiRecord } from "../../../../lib/api-client";
 import { useActiveBusiness } from "../../../../lib/use-active-business";
+import { useAccessControl } from "../AccessControl";
 import AccountShell from "./AccountShell";
-import { DataTable, Dialog, Field, RadioGroup, fieldClass, hintClass, primaryButton, secondaryButton, useToast, type Column } from "./ui";
+import { DataTable, Dialog, Field, fieldClass, primaryButton, secondaryButton, useToast, type Column } from "./ui";
 
-type Status = "active" | "inactive";
-type Floor = { id: string; name: string; tables: number; description: string; status: Status };
+type TableStatus = "available" | "occupied" | "reserved" | "cleaning";
+type Table = { id: string; number: string; name: string; seats: number; availability: TableStatus; active: boolean };
 
-function toFloor(record: ApiRecord): Floor {
-  return { id: String(record.id), name: typeof record.name === "string" ? record.name : "", tables: Number(record.tables_count ?? 0), description: typeof record.description === "string" ? record.description : "", status: record.is_active === false ? "inactive" : "active" };
+const tableStatuses: TableStatus[] = ["available", "occupied", "reserved", "cleaning"];
+const text = (value: unknown) => typeof value === "string" ? value : "";
+const number = (value: unknown) => { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : 0; };
+
+function toTable(record: ApiRecord): Table {
+  const status = text(record.status).toLowerCase();
+  return {
+    id: String(record.id), number: text(record.number) || text(record.table_number), name: text(record.name) || text(record.table_name), seats: number(record.capacity ?? record.seats),
+    availability: tableStatuses.includes(status as TableStatus) ? status as TableStatus : "available", active: record.is_active !== false,
+  };
 }
 
+/** Table management uses the business-level API; floors remain an internal backend detail. */
 export default function FloorsPage() {
   const { business, businessId, isLoading: isBusinessLoading, error: businessError } = useActiveBusiness();
-  const [floors, setFloors] = useState<Floor[]>([]);
+  const { can } = useAccessControl();
+  const [tables, setTables] = useState<Table[]>([]);
   const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState<Table | null>(null);
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [tables, setTables] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<Status>("active");
-  const [errors, setErrors] = useState<{ name?: string; tables?: string; form?: string }>({});
+  const [numberOrName, setNumberOrName] = useState("");
+  const [seats, setSeats] = useState("2");
+  const [availability, setAvailability] = useState<TableStatus>("available");
+  const [errors, setErrors] = useState<{ number?: string; seats?: string; form?: string }>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [toast, notify] = useToast();
 
-  const loadFloors = useCallback(async () => {
-    if (!businessId) { setFloors([]); setIsLoading(false); return; }
+  const loadTables = useCallback(async () => {
+    if (!businessId) { setTables([]); setIsLoading(false); return; }
     setIsLoading(true);
     try {
-      setFloors(listApiRecords(await boardsApi.floors(businessId)).map(toFloor));
+      const tablePayload = await boardsApi.businessTables(businessId, "?page_size=100");
+      setTables(listApiRecords(tablePayload).map(toTable));
       setErrors({});
     } catch (error) {
-      setErrors({ form: error instanceof Error ? error.message : "Unable to load floors." });
-    } finally {
-      setIsLoading(false);
-    }
+      setErrors({ form: error instanceof Error ? error.message : "Unable to load tables." });
+    } finally { setIsLoading(false); }
   }, [businessId]);
 
-  useEffect(() => { const timer = window.setTimeout(() => { void loadFloors(); }, 0); return () => window.clearTimeout(timer); }, [loadFloors]);
+  useEffect(() => { const timer = window.setTimeout(() => { void loadTables(); }, 0); return () => window.clearTimeout(timer); }, [loadTables]);
 
-  const columns: Column<Floor>[] = [
-    { key: "name", label: "Floor Name", sortValue: (floor) => floor.name, render: (floor) => <><div>{floor.name}</div><div className="mt-1.5 text-[#6f6054]">{floor.description || "-"}</div></> },
-    { key: "tables", label: "Table Quantity", sortValue: (floor) => floor.tables, render: (floor) => floor.tables },
-    { key: "status", label: "Status", sortValue: (floor) => floor.status, render: (floor) => floor.status },
-  ];
-
-  function openCreate() {
-    setName(""); setTables(""); setDescription(""); setStatus("active"); setErrors({}); setOpen(true);
+  function resetForm(table?: Table) {
+    setEditing(table ?? null); setNumberOrName(table?.number || table?.name || ""); setSeats(String(table?.seats || 2)); setAvailability(table?.availability || "available"); setErrors({});
   }
+  function openCreate() { resetForm(); setOpen(true); }
+  function openEdit(table: Table) { resetForm(table); setOpen(true); }
+  function close() { if (!isSaving) { setOpen(false); setEditing(null); } }
+
+  const columns: Column<Table>[] = [
+    { key: "number", label: "Table name / number", sortValue: (table) => table.number || table.name, render: (table) => <div><strong className="font-medium">{table.number || table.name || "-"}</strong>{table.name && table.name !== table.number && <span className="mt-1 block text-[10px] text-[#6f6054]">{table.name}</span>}</div> },
+    { key: "seats", label: "Table seats", sortValue: (table) => table.seats, render: (table) => table.seats || "-" },
+    { key: "availability", label: "Availability", sortValue: (table) => table.availability, render: (table) => <span className="capitalize">{table.active ? table.availability : "inactive"}</span> },
+    { key: "actions", label: "Actions", render: (table) => can("settings.update") ? <span className="inline-flex gap-2"><button type="button" onClick={() => openEdit(table)} className="rounded px-1.5 py-0.5 text-[11px] text-[#805336] hover:bg-[#eadcc8]">Edit</button><button type="button" onClick={() => void remove(table)} className="rounded px-1.5 py-0.5 text-[11px] text-[#a8432f] hover:bg-[#f8e8e2]">Delete</button></span> : null },
+  ];
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const next: typeof errors = {};
-    const clean = name.trim();
-    const count = Number(tables);
-    if (!clean) next.name = "Floor name is required.";
-    if (!Number.isInteger(count) || count < 1) next.tables = "Enter a whole number greater than zero.";
-    setErrors(next);
-    if (next.name || next.tables || !businessId) return;
+    const cleanNumber = numberOrName.trim(); const parsedSeats = Number(seats);
+    if (!cleanNumber) next.number = "A table name or number is required.";
+    if (!Number.isInteger(parsedSeats) || parsedSeats < 1) next.seats = "Enter at least one seat.";
+    setErrors(next); if (Object.keys(next).length || !businessId) return;
 
+    setIsSaving(true);
     try {
-      const floor = await boardsApi.createFloor(businessId, { business: Number(businessId), name: clean, description: description.trim(), display_order: floors.length, is_active: status === "active" });
-      const floorId = Number(floor.id);
-      await Promise.all(Array.from({ length: count }, (_, index) => boardsApi.createTable(businessId, floorId, { floor: floorId, number: `${clean.toUpperCase()}-${index + 1}`, capacity: 4, status: "AVAILABLE", is_active: status === "active" })));
-      notify(`Floor created with ${count} table${count === 1 ? "" : "s"}.`);
-      setOpen(false);
-      await loadFloors();
+      const body: ApiRecord = { number: cleanNumber, name: cleanNumber, capacity: parsedSeats, status: availability, is_active: editing?.active ?? true };
+      if (editing) await boardsApi.updateBusinessTable(businessId, editing.id, body);
+      else await boardsApi.createBusinessTable(businessId, body);
+      notify(editing ? "Table updated." : "Table created."); close(); await loadTables();
     } catch (error) {
-      setErrors({ form: error instanceof Error ? error.message : "Unable to create this floor." });
+      setErrors({ form: error instanceof Error ? error.message : "Unable to save this table." });
+    } finally { setIsSaving(false); }
+  }
+
+  async function remove(table: Table) {
+    if (!businessId || !window.confirm(`Delete table ${table.number || table.name}? It cannot be used for new dine-in orders after deletion.`)) return;
+    try {
+      await boardsApi.deleteBusinessTable(businessId, table.id);
+      notify("Table deleted.");
+      await loadTables();
+    } catch (error) {
+      setErrors({ form: error instanceof Error ? error.message : "Unable to delete this table." });
     }
   }
 
   const noBusiness = !isBusinessLoading && !businessId;
-  const businessName = typeof business?.name === "string" ? business.name : "the active business";
+  const businessName = text(business?.name) || "the active business";
 
   return (
-    <AccountShell crumb="Floors" searchPlaceholder="Search floors or add filters..." search={query} onSearchChange={setQuery} onCreate={openCreate}>
-      {(businessError || errors.form && !open) && <p role="alert" className="mb-3 rounded-md bg-red-50 p-2 text-[11px] text-red-700">{businessError || errors.form}</p>}
-      {isBusinessLoading || isLoading ? <p className="p-4 text-[11px] text-[#6f6054]">Loading floors…</p> : noBusiness ? <p className="p-4 text-[11px] text-[#6f6054]">Create a business profile in Business Details before adding floors.</p> : <DataTable rows={floors} columns={columns} query={query} searchText={(floor) => `${floor.name} ${floor.tables} ${floor.description} ${floor.status}`} emptyText="No floors returned for this business." />}
-      {open && <Dialog title="Create New Floor" description={`Add a seating area to ${businessName}.`} onClose={() => setOpen(false)}>
+    <AccountShell crumb="Tables" searchPlaceholder="Search tables..." search={query} onSearchChange={setQuery} onCreate={openCreate}>
+      {(businessError || (errors.form && !open)) && <p role="alert" className="mb-3 rounded-md bg-red-50 p-2 text-[11px] text-red-700">{businessError || errors.form}</p>}
+      {isBusinessLoading || isLoading ? <p className="p-4 text-[11px] text-[#6f6054]">Loading tables…</p> : noBusiness ? <p className="p-4 text-[11px] text-[#6f6054]">Create a business profile in Business before adding tables.</p> : <DataTable rows={tables} columns={columns} query={query} searchText={(table) => `${table.number} ${table.name} ${table.seats} ${table.availability}`} emptyText="No tables returned for this business. Create the first one to get started." />}
+      {open && <Dialog title={editing ? "Edit Table" : "Create Table"} description={`Set up a table for ${businessName}.`} onClose={close}>
         <form onSubmit={submit} className="grid gap-3.5" noValidate>
           {errors.form && <p role="alert" className="m-0 rounded-md bg-red-50 p-2 text-[10px] text-red-700">{errors.form}</p>}
-          <Field label="Floor Name" required error={errors.name}><input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Terrace" className={fieldClass} /></Field>
-          <div className="grid gap-1.5"><Field label="Table Quantity" required error={errors.tables}><input inputMode="numeric" value={tables} onChange={(e) => setTables(e.target.value)} placeholder="e.g., 10" className={fieldClass} /></Field><p className={`${hintClass} m-0`}>The API creates this many available tables for the new floor.</p></div>
-          <Field label="Description"><input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional seating area details" className={fieldClass} /></Field>
-          <RadioGroup<Status> legend="Status" name="floor-status" value={status} onChange={setStatus} options={[{ value: "active", label: "active" }, { value: "inactive", label: "inactive" }]} />
-          <div className="mt-1 flex justify-end gap-2"><button type="button" onClick={() => setOpen(false)} className={secondaryButton}>Cancel</button><button type="submit" disabled={!businessId} className={primaryButton}>Create Floor</button></div>
+          <Field label="Table name / number" required error={errors.number}><input autoFocus value={numberOrName} onChange={(event) => setNumberOrName(event.target.value)} placeholder="e.g., T-01 or Window table" className={fieldClass} /></Field>
+          <Field label="Table seats" required error={errors.seats}><input inputMode="numeric" value={seats} onChange={(event) => setSeats(event.target.value)} className={fieldClass} /></Field>
+          <Field label="Availability"><select value={availability} onChange={(event) => setAvailability(event.target.value as TableStatus)} className={fieldClass}>{tableStatuses.map((status) => <option key={status} value={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</select></Field>
+          <div className="mt-1 flex justify-end gap-2"><button type="button" onClick={close} disabled={isSaving} className={secondaryButton}>Cancel</button><button type="submit" disabled={isSaving || !businessId} className={primaryButton}>{isSaving ? "Saving…" : editing ? "Save Changes" : "Create Table"}</button></div>
         </form>
       </Dialog>}
       {toast}

@@ -16,10 +16,21 @@ export class ApiRequestError extends Error {
     message: string,
     public readonly status: number,
     public readonly details: unknown,
+    /** Server-provided pacing guidance for a throttled request, when present. */
+    public readonly retryAfterSeconds: number | null = null,
   ) {
     super(message);
     this.name = "ApiRequestError";
   }
+}
+
+function retryAfterSeconds(response: Response): number | null {
+  const retryAfter = response.headers.get("Retry-After");
+  if (!retryAfter) return null;
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds;
+  const retryAt = Date.parse(retryAfter);
+  return Number.isFinite(retryAt) ? Math.max(0, (retryAt - Date.now()) / 1_000) : null;
 }
 
 function getStoredValue(key: string): string | null {
@@ -74,8 +85,40 @@ export function getSignedInUser(): ApiRecord | null {
   }
 }
 
-function setSignedInUser(user: ApiRecord) {
+/** Cache a freshly returned profile so navigation and permission checks stay in sync. */
+export function setSignedInUser(user: ApiRecord) {
   setStoredValue(SIGNED_IN_USER_KEY, JSON.stringify(user));
+}
+
+/** Return the effective `module.action` permission codes returned by `/auth/me/`. */
+export function getUserPermissions(value: ApiRecord | null | undefined): Set<string> {
+  if (!value) return new Set();
+  const user = unwrapApiData<ApiRecord>(value);
+  const codes = new Set<string>();
+
+  if (Array.isArray(user.permissions)) {
+    for (const permission of user.permissions) {
+      if (typeof permission === "string" && permission.trim()) codes.add(permission.trim().toLowerCase());
+    }
+  }
+
+  // This fallback is useful with older API deployments that only return direct grants.
+  if (Array.isArray(user.direct_permissions)) {
+    for (const permission of user.direct_permissions) {
+      if (!permission || typeof permission !== "object") continue;
+      const item = permission as ApiRecord;
+      const code = item.full_codename ?? item.codename ?? (typeof item.module === "string" && typeof item.action === "string" ? `${item.module}.${item.action}` : "");
+      if (typeof code === "string" && code.trim()) codes.add(code.trim().toLowerCase());
+    }
+  }
+
+  return codes;
+}
+
+export function userHasPermission(value: ApiRecord | null | undefined, permission: string): boolean {
+  const permissions = getUserPermissions(value);
+  const required = permission.trim().toLowerCase();
+  return permissions.has("*") || permissions.has(required);
 }
 
 /** A client-generated replay key for an API mutation that must not be duplicated. */
@@ -145,6 +188,7 @@ async function readResponse(response: Response) {
 
 function requestHeaders(init: RequestInit) {
   const headers = new Headers(init.headers);
+  if (!headers.has("Accept")) headers.set("Accept", "application/json");
   if (!headers.has("Content-Type") && init.body && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
   const token = getAccessToken();
   if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
@@ -180,7 +224,63 @@ async function sendRequest(path: string, init: RequestInit) {
   return { response, payload: await readResponse(response) };
 }
 
-function friendlyFailureMessage(status: number): string {
+function isGenericErrorMessage(message: string) {
+  return ["validation failed", "bad request", "request failed", "an error occurred"].includes(message.trim().toLowerCase().replace(/[.!]+$/, ""));
+}
+
+/**
+ * Turn the API's field-keyed error envelope into a short message suitable for a
+ * form. The API returns `message` for the summary and `errors` for the useful
+ * reason (for example, a stock or payment validation failure).
+ */
+function fieldErrorMessage(value: unknown): string | null {
+  const messages: string[] = [];
+
+  function visit(current: unknown, field = "", depth = 0): void {
+    if (messages.length >= 2 || depth > 4 || current === null || current === undefined) return;
+    if (typeof current === "string") {
+      const message = current.trim();
+      if (!message || isGenericErrorMessage(message)) return;
+      const prefix = field && !["detail", "non_field_errors", "errors"].includes(field) ? `${field.replaceAll("_", " ")}: ` : "";
+      const formatted = `${prefix}${message}`;
+      if (!messages.includes(formatted)) messages.push(formatted);
+      return;
+    }
+    if (Array.isArray(current)) {
+      current.forEach((item) => visit(item, field, depth + 1));
+      return;
+    }
+    if (typeof current === "object") {
+      Object.entries(current as ApiRecord).forEach(([key, item]) => {
+        if (!["success", "message", "status", "code"].includes(key)) visit(item, key, depth + 1);
+      });
+    }
+  }
+
+  const record = value && typeof value === "object" && !Array.isArray(value) ? value as ApiRecord : null;
+  if (record?.errors !== undefined) visit(record.errors);
+  if (!messages.length && record?.detail !== undefined) visit(record.detail);
+  return messages.length ? messages.join(" ") : null;
+}
+
+function errorMessageFromPayload(payload: unknown): string | null {
+  const value = unwrapApiData<unknown>(payload);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as ApiRecord;
+  const message = typeof record.message === "string" ? record.message.trim() : "";
+  const detail = fieldErrorMessage(record);
+  // Field-level information names the failed value. Prefer it to the broad
+  // summary (which is often just "Validation failed").
+  if (detail) return detail;
+  return message || null;
+}
+
+function friendlyFailureMessage(status: number, payload: unknown): string {
+  // The published API returns a human-readable `message` on expected client
+  // failures. Preserve it so forms can explain a validation or conflict without
+  // needing to know each endpoint's error envelope. Do not surface 5xx details.
+  const apiMessage = errorMessageFromPayload(payload);
+  if (status >= 400 && status < 500 && apiMessage) return apiMessage;
   if (status === 400 || status === 422) return "Please check the details and try again.";
   if (status === 401) return "Your session has ended. Please sign in again.";
   if (status === 403) return "You don’t have permission to do that.";
@@ -199,7 +299,7 @@ async function refreshAccessToken(): Promise<boolean> {
   try {
     response = await fetchWithTimeout(apiUrl("auth/token/refresh/"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Accept": "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({ refresh }),
       cache: "no-store",
     });
@@ -230,7 +330,12 @@ export async function apiRequest<T = unknown>(path: string, init: RequestInit = 
 
   if (!result.response.ok) {
     if (result.response.status === 401) clearAuthTokens();
-    throw new ApiRequestError(friendlyFailureMessage(result.response.status), result.response.status, result.payload);
+    throw new ApiRequestError(
+      friendlyFailureMessage(result.response.status, result.payload),
+      result.response.status,
+      result.payload,
+      retryAfterSeconds(result.response),
+    );
   }
 
   const method = (init.method || "GET").toUpperCase();
@@ -341,12 +446,14 @@ export const boardsApi = {
   updateStaff: (id: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`auth/${id}/`, jsonRequest("PATCH", body)),
   updateStaffEmail: (id: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`auth/${id}/email/`, jsonRequest("PATCH", body)),
   resetStaffPassword: (id: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`auth/${id}/password/reset/`, jsonRequest("POST", body)),
+  deleteStaff: (id: number | string) => apiDataRequest<ApiRecord>(`auth/${id}/?confirm=true`, jsonRequest("DELETE")),
   deactivateStaff: (id: number | string) => apiDataRequest<ApiRecord>(`auth/${id}/?confirm=true`, jsonRequest("DELETE")),
   activateStaff: (id: number | string) => apiDataRequest<ApiRecord>(`auth/${id}/activate/`, jsonRequest("POST")),
   roles: (query = "") => apiDataRequest<unknown>(`roles/${query}`),
   createRole: (body: ApiRecord) => apiDataRequest<ApiRecord>("roles/", jsonRequest("POST", body)),
   updateRole: (id: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`roles/${id}/`, jsonRequest("PATCH", body)),
   deleteRole: (id: number | string) => apiDataRequest(`roles/${id}/`, jsonRequest("DELETE")),
+  clearRolePermissions: (id: number | string) => apiDataRequest(`roles/${id}/permissions/`, jsonRequest("DELETE")),
   activateRole: (id: number | string) => apiDataRequest<ApiRecord>(`roles/${id}/activate/`, jsonRequest("POST")),
   deactivateRole: (id: number | string) => apiDataRequest<ApiRecord>(`roles/${id}/deactivate/`, jsonRequest("POST")),
   permissions: (query = "") => apiDataRequest<unknown>(`roles/permissions/${query}`),
@@ -356,13 +463,20 @@ export const boardsApi = {
   business: (id: number | string) => apiDataRequest<ApiRecord>(`business/${id}/`),
   createBusiness: (body: ApiBody) => apiDataRequest<ApiRecord>("business/", jsonRequest("POST", body)),
   updateBusiness: (id: number | string, body: ApiBody) => apiDataRequest<ApiRecord>(`business/${id}/`, jsonRequest("PATCH", body)),
+  deleteBusiness: (id: number | string) => apiDataRequest(`business/${id}/`, jsonRequest("DELETE")),
   businessConfiguration: (businessId: number | string) => apiDataRequest<ApiRecord>(`business/${businessId}/configuration/`),
   updateBusinessConfiguration: (businessId: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`business/${businessId}/configuration/`, jsonRequest("PATCH", body)),
+  deleteBusinessConfiguration: (businessId: number | string) => apiDataRequest(`business/${businessId}/configuration/`, jsonRequest("DELETE")),
   floors: (businessId: number | string) => apiDataRequest<unknown>(`business/${businessId}/floors/`),
   createFloor: (businessId: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`business/${businessId}/floors/`, jsonRequest("POST", body)),
   updateFloor: (businessId: number | string, floorId: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`business/${businessId}/floors/${floorId}/`, jsonRequest("PATCH", body)),
   deleteFloor: (businessId: number | string, floorId: number | string) => apiDataRequest(`business/${businessId}/floors/${floorId}/`, jsonRequest("DELETE")),
+  businessTables: (businessId: number | string, query = "") => apiDataRequest<unknown>(`business/${businessId}/tables/${query}`),
+  createBusinessTable: (businessId: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`business/${businessId}/tables/`, jsonRequest("POST", body)),
+  updateBusinessTable: (businessId: number | string, tableId: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`business/${businessId}/tables/${tableId}/`, jsonRequest("PATCH", body)),
+  deleteBusinessTable: (businessId: number | string, tableId: number | string) => apiDataRequest(`business/${businessId}/tables/${tableId}/`, jsonRequest("DELETE")),
   tables: (businessId: number | string, floorId: number | string) => apiDataRequest<unknown>(`business/${businessId}/floors/${floorId}/tables/`),
+  availableTables: (businessId: number | string, query = "") => apiDataRequest<unknown>(`business/${businessId}/tables/available/${query}`),
   createTable: (businessId: number | string, floorId: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`business/${businessId}/floors/${floorId}/tables/`, jsonRequest("POST", body)),
   updateTable: (businessId: number | string, floorId: number | string, tableId: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`business/${businessId}/floors/${floorId}/tables/${tableId}/`, jsonRequest("PATCH", body)),
   deleteTable: (businessId: number | string, floorId: number | string, tableId: number | string) => apiDataRequest(`business/${businessId}/floors/${floorId}/tables/${tableId}/`, jsonRequest("DELETE")),
@@ -373,6 +487,7 @@ export const boardsApi = {
 
   expenseCategories: () => apiDataRequest<unknown>("finance/expense-categories/"),
   createExpenseCategory: (body: ApiRecord) => apiDataRequest<ApiRecord>("finance/expense-categories/", jsonRequest("POST", body)),
+  deleteExpenseCategory: (id: number | string) => apiDataRequest(`finance/expense-categories/${id}/`, jsonRequest("DELETE")),
   expenses: (query = "") => apiDataRequest<unknown>(`finance/expenses/${query}`),
   createExpense: (body: ApiRecord) => apiDataRequest<ApiRecord>("finance/expenses/", jsonRequest("POST", body)),
   updateExpense: (id: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`finance/expenses/${id}/`, jsonRequest("PATCH", body)),
@@ -390,26 +505,32 @@ export const boardsApi = {
   inventoryCategories: () => apiDataRequest<unknown>("inventory/categories/"),
   createInventoryCategory: (body: ApiRecord) => apiDataRequest<ApiRecord>("inventory/categories/", jsonRequest("POST", body)),
   updateInventoryCategory: (id: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`inventory/categories/${id}/`, jsonRequest("PATCH", body)),
+  deleteInventoryCategory: (id: number | string) => apiDataRequest(`inventory/categories/${id}/`, jsonRequest("DELETE")),
   inventoryItems: (query = "") => apiDataRequest<unknown>(`inventory/items/${query}`),
   createInventoryItem: (body: ApiRecord) => apiDataRequest<ApiRecord>("inventory/items/", jsonRequest("POST", body)),
   updateInventoryItem: (id: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`inventory/items/${id}/`, jsonRequest("PATCH", body)),
+  deleteInventoryItem: (id: number | string) => apiDataRequest(`inventory/items/${id}/`, jsonRequest("DELETE")),
   stockBalances: (query = "") => apiDataRequest<unknown>(`inventory/stock-balances/${query}`),
   stockMovements: (query = "") => apiDataRequest<unknown>(`inventory/movements/${query}`),
   createStockAdjustment: (body: ApiRecord) => apiDataRequest<ApiRecord>("inventory/adjustments/", jsonRequest("POST", body)),
   inventoryUnits: () => apiDataRequest<unknown>("inventory/units/"),
   createInventoryUnit: (body: ApiRecord) => apiDataRequest<ApiRecord>("inventory/units/", jsonRequest("POST", body)),
+  deleteInventoryUnit: (id: number | string) => apiDataRequest(`inventory/units/${id}/`, jsonRequest("DELETE")),
 
   menuCategories: () => apiDataRequest<unknown>("menu/categories/"),
   createMenuCategory: (body: ApiRecord) => apiDataRequest<ApiRecord>("menu/categories/", jsonRequest("POST", body)),
+  deleteMenuCategory: (id: number | string) => apiDataRequest(`menu/categories/${id}/`, jsonRequest("DELETE")),
   menuProducts: () => apiDataRequest<unknown>("menu/products/"),
   createMenuProduct: (body: ApiBody) => apiDataRequest<ApiRecord>("menu/products/", jsonRequest("POST", body)),
   updateMenuProduct: (id: number | string, body: ApiBody) => apiDataRequest<ApiRecord>(`menu/products/${id}/`, jsonRequest("PATCH", body)),
   deleteMenuProduct: (id: number | string) => apiDataRequest(`menu/products/${id}/`, jsonRequest("DELETE")),
   menuVariants: () => apiDataRequest<unknown>("menu/variants/"),
+  deleteMenuVariant: (id: number | string) => apiDataRequest(`menu/variants/${id}/`, jsonRequest("DELETE")),
 
   suppliers: (query = "") => apiDataRequest<unknown>(`purchasing/suppliers/${query}`),
   createSupplier: (body: ApiRecord) => apiDataRequest<ApiRecord>("purchasing/suppliers/", jsonRequest("POST", body)),
   updateSupplier: (id: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`purchasing/suppliers/${id}/`, jsonRequest("PATCH", body)),
+  deleteSupplier: (id: number | string) => apiDataRequest(`purchasing/suppliers/${id}/`, jsonRequest("DELETE")),
   deactivateSupplier: (id: number | string) => apiDataRequest<ApiRecord>(`purchasing/suppliers/${id}/deactivate/`, jsonRequest("POST")),
   purchases: (query = "") => apiDataRequest<unknown>(`purchasing/purchases/${query}`),
   createPurchase: (body: ApiRecord) => apiDataRequest<ApiRecord>("purchasing/purchases/", jsonRequest("POST", body)),
@@ -418,10 +539,24 @@ export const boardsApi = {
   submitPurchase: (id: number | string) => apiDataRequest<ApiRecord>(`purchasing/purchases/${id}/submit/`, jsonRequest("POST")),
   receivePurchase: (id: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`purchasing/purchases/${id}/receive/`, jsonRequest("POST", body)),
 
-  recipes: () => apiDataRequest<unknown>("recipes/"),
+  recipes: (query = "") => apiDataRequest<unknown>(`recipes/${query}`),
+  recipe: (id: number | string) => apiDataRequest<ApiRecord>(`recipes/${id}/`),
   createRecipe: (body: ApiRecord) => apiDataRequest<ApiRecord>("recipes/", jsonRequest("POST", body)),
+  updateRecipe: (id: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`recipes/${id}/`, jsonRequest("PATCH", body)),
+  deleteRecipe: (id: number | string) => apiDataRequest(`recipes/${id}/`, jsonRequest("DELETE")),
   recipeIngredients: (recipeId: number | string) => apiDataRequest<unknown>(`recipes/${recipeId}/ingredients/`),
   createRecipeIngredient: (recipeId: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`recipes/${recipeId}/ingredients/`, jsonRequest("POST", body)),
+  updateRecipeIngredient: (recipeId: number | string, ingredientId: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`recipes/${recipeId}/ingredients/${ingredientId}/`, jsonRequest("PATCH", body)),
+  deleteRecipeIngredient: (recipeId: number | string, ingredientId: number | string) => apiDataRequest(`recipes/${recipeId}/ingredients/${ingredientId}/`, jsonRequest("DELETE")),
+  productionRuns: (query = "") => apiDataRequest<unknown>(`production-runs/${query}`),
+  productionRun: (id: number | string) => apiDataRequest<ApiRecord>(`production-runs/${id}/`),
+  createProductionRun: (body: ApiRecord) => apiDataRequest<ApiRecord>("production-runs/", jsonRequest("POST", body)),
+  updateProductionRun: (id: number | string, body: ApiRecord) => apiDataRequest<ApiRecord>(`production-runs/${id}/`, jsonRequest("PATCH", body)),
+  cancelProductionRun: (id: number | string) => apiDataRequest<ApiRecord>(`production-runs/${id}/cancel/`, jsonRequest("POST")),
+  productStockBalances: (query = "") => apiDataRequest<unknown>(`inventory/product-stock-balances/${query}`),
+  createProductStockAdjustment: (body: ApiRecord) => apiDataRequest<ApiRecord>("inventory/product-stock-adjustments/", jsonRequest("POST", body)),
+  productionProductStockBalances: (query = "") => apiDataRequest<unknown>(`production-runs/product-stock-balances/${query}`),
+  productStockMovements: (query = "") => apiDataRequest<unknown>(`production-runs/product-stock-movements/${query}`),
 
   orders: (query = "") => apiDataRequest<unknown>(`sales/orders/${query}`),
   order: (id: number | string) => apiDataRequest<ApiRecord>(`sales/orders/${id}/`),
@@ -437,5 +572,14 @@ export const boardsApi = {
     expenses: (query = "") => apiDataRequest<ApiRecord>(`reports/expenses/${query}`),
     purchases: (query = "") => apiDataRequest<ApiRecord>(`reports/purchases/${query}`),
     inventory: () => apiDataRequest<ApiRecord>("reports/inventory/"),
+    dailySummary: (query = "") => apiDataRequest<ApiRecord>(`reports/daily-summary/${query}`),
+    salesPerformance: (query = "") => apiDataRequest<ApiRecord>(`reports/sales-performance/${query}`),
+    inventoryReorder: (query = "") => apiDataRequest<ApiRecord>(`reports/inventory/reorder/${query}`),
+    inventoryMovements: (query = "") => apiDataRequest<ApiRecord>(`reports/inventory/movements/${query}`),
+    production: (query = "") => apiDataRequest<ApiRecord>(`reports/production/${query}`),
+    purchasingSuppliers: (query = "") => apiDataRequest<ApiRecord>(`reports/purchasing-suppliers/${query}`),
+    profitLoss: (query = "") => apiDataRequest<ApiRecord>(`reports/profit-loss/${query}`),
+    audit: (query = "") => apiDataRequest<ApiRecord>(`reports/audit/${query}`),
+    taxCompliance: (query = "") => apiDataRequest<ApiRecord>(`reports/tax-compliance/${query}`),
   },
 };
