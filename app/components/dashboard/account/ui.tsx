@@ -1,5 +1,7 @@
 "use client";
 
+import { TableCell } from "@/app/components/dashboard/TableCell";
+
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 export const fieldClass =
@@ -168,14 +170,14 @@ export function DataTable<T extends { id: string }>({
           </thead>
           <tbody>
             {pageRows.length === 0 && (
-              <tr><td colSpan={columns.length + 1} className="px-3 py-10 text-center text-[#8b7d70]">{emptyText}</td></tr>
+              <tr><TableCell colSpan={columns.length + 1} className="px-3 py-10 text-center text-[#8b7d70]">{emptyText}</TableCell></tr>
             )}
             {pageRows.map((row) => (
               <tr key={row.id} className="border-b border-[#efe6d8] last:border-0 hover:bg-[#f5ede0]/60">
-                <td className="px-3 py-3.5 align-middle">
+                <TableCell className="px-3 py-3.5 align-middle">
                   <input type="checkbox" aria-label="Select row" checked={selected.includes(row.id)} onChange={(e) => setSelected((current) => (e.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id)))} className="h-3.5 w-3.5 accent-[#805336]" />
-                </td>
-                {columns.map((column) => <td key={column.key} className={`px-3 py-3.5 align-middle ${column.className ?? ""}`}>{column.render(row)}</td>)}
+                </TableCell>
+                {columns.map((column) => <TableCell key={column.key} className={`px-3 py-3.5 align-middle ${column.className ?? ""}`}>{column.render(row)}</TableCell>)}
               </tr>
             ))}
           </tbody>

@@ -1,5 +1,7 @@
 "use client";
 
+import { TableCell } from "@/app/components/dashboard/TableCell";
+
 import { useState } from "react";
 
 import AccountShell from "./AccountShell";
@@ -14,7 +16,7 @@ export default function EcommercePage() {
           <h1 className="m-0 text-base font-semibold text-[#432f22]">E-commerce is not available yet</h1>
           <p className="mb-0 mt-2 text-sm leading-6 text-[#6f6155]">This area is ready and will become available as soon as it can be connected.</p>
         </article>
-        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-[#e5dacd] bg-[#fcf9f4]/95"><div className="min-h-0 overflow-auto"><table className="w-full min-w-[620px] border-collapse text-left"><thead className="bg-[#f0e5d4] text-[9px] font-medium text-[#4b3b2f]"><tr>{["Storefront", "Domain / slug", "Catalogue", "Checkout", "Status"].map((heading) => <th key={heading} className="h-9 px-3">{heading}</th>)}</tr></thead><tbody><tr><td colSpan={5} className="px-3 py-12 text-center text-[10px] text-[#8e8074]">Nothing to show yet.</td></tr></tbody></table></div></div>
+        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-[#e5dacd] bg-[#fcf9f4]/95"><div className="min-h-0 overflow-auto"><table className="w-full min-w-[620px] border-collapse text-left"><thead className="bg-[#f0e5d4] text-[9px] font-medium text-[#4b3b2f]"><tr>{["Storefront", "Domain / slug", "Catalogue", "Checkout", "Status"].map((heading) => <th key={heading} className="h-9 px-3">{heading}</th>)}</tr></thead><tbody><tr><TableCell colSpan={5} className="px-3 py-12 text-center text-[10px] text-[#8e8074]">Nothing to show yet.</TableCell></tr></tbody></table></div></div>
       </section>
     </AccountShell>
   );

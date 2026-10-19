@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -68,22 +68,10 @@ type AccountShellProps = {
   children: ReactNode;
 };
 
-export default function AccountShell({ crumb, searchPlaceholder = "Search...", search = "", onSearchChange, createLabel = "Create New", onCreate, requiredPermission = "settings.view", createPermission = "settings.update", children }: AccountShellProps) {
+export default function AccountShell({ crumb, createLabel = "Create New", onCreate, requiredPermission = "settings.view", createPermission = "settings.update", children }: AccountShellProps) {
   const pathname = usePathname();
-  const searchRef = useRef<HTMLInputElement>(null);
   const { can } = useAccessControl();
 
-  // ⌘K / Ctrl+K focuses the search box.
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
 
   const itemClass = (active: boolean) =>
     `flex min-h-9 w-full items-center gap-2.5 rounded-lg px-3 text-left text-[11px] no-underline transition ${active ? "bg-[#eadcc8] font-semibold text-[#2b1d15]" : "text-[#5f5043] hover:bg-[#eadcc8]/70"}`;
@@ -129,11 +117,7 @@ export default function AccountShell({ crumb, searchPlaceholder = "Search...", s
           <div className="flex min-w-fit items-center gap-2 text-[10px] text-[#918477]">
             <Link href={BASE} className="text-inherit no-underline hover:underline">Home</Link><span aria-hidden="true">›</span><span>{crumb}</span>
           </div>
-          <label className="flex h-8 min-w-40 flex-1 items-center gap-2 rounded-lg border border-[#e6dbcd] bg-[#fffaf3] px-3">
-            <span aria-hidden="true" className="text-[#6f6054]">⌕</span>
-            <input ref={searchRef} type="search" aria-label="Search" value={search} onChange={(e) => onSearchChange?.(e.target.value)} placeholder={searchPlaceholder} className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-[#9a8c80]" />
-            <kbd className="text-[10px] text-[#8b7d70]">⌘K</kbd>
-          </label>
+
           {onCreate && can(createPermission) && (
             <button type="button" onClick={onCreate} className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-[#28180f] px-4 text-[11px] font-semibold text-white transition hover:bg-[#4a2d1b]">
               <span aria-hidden="true">+</span>{createLabel}

@@ -1,5 +1,7 @@
 "use client";
 
+import { TableCell } from "@/app/components/dashboard/TableCell";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { boardsApi, subscribeToApiDataChanges, type ApiRecord } from "../../../../lib/api-client";
@@ -34,7 +36,7 @@ export default function PurchasingSuppliersPage({ role }: { role: ReportsRole })
       {error && <p role="alert" className="m-0 rounded-md bg-red-50 p-2 text-[10px] text-red-700">{error}</p>}
       <div className="flex flex-wrap items-start justify-between gap-3"><p className="m-0 max-w-xl pt-1 text-[10px] leading-4 text-[#76685c]">Supplier purchase activity for the selected period. A purchase becomes raw-material stock only after it is received.</p><DateRangeControls dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} onToday={() => { const today = todayIso(); setDateFrom(today); setDateTo(today); }} onThisMonth={() => { setDateFrom(monthStartIso()); setDateTo(todayIso()); }} /></div>
       {isLoading ? <LoadingCards /> : <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4"><MetricCard label="Purchases" value={money(report?.total_purchases)} note={`${wholeNumber(report?.purchase_count)} purchase records`} /><MetricCard label="Received" value={wholeNumber(report?.received_count)} note="Fully received" /><MetricCard label="Partially received" value={wholeNumber(report?.partially_received_count)} /><MetricCard label="Still ordered" value={wholeNumber(report?.ordered_count)} /></div>}
-      <ReportTable headers={["Supplier", "Purchase count", "Purchase value"]} loading={isLoading} hasRows={rows.length > 0} empty="No supplier purchase totals match the selected period and search.">{rows.map((item) => <tr key={String(item.supplier_id)} className="h-10 border-b border-[#eee6dc]"><td className="px-3 font-medium">{text(item.supplier_name) || "-"}</td><td className="px-3">{wholeNumber(item.purchase_count)}</td><td className="px-3 text-right font-medium">{money(item.total)}</td></tr>)}</ReportTable>
+      <ReportTable headers={["Supplier", "Purchase count", "Purchase value"]} loading={isLoading} hasRows={rows.length > 0} empty="No supplier purchase totals match the selected period and search.">{rows.map((item) => <tr key={String(item.supplier_id)} className="h-10 border-b border-[#eee6dc]"><TableCell className="px-3 font-medium">{text(item.supplier_name) || "-"}</TableCell><TableCell className="px-3">{wholeNumber(item.purchase_count)}</TableCell><TableCell className="px-3 text-right font-medium">{money(item.total)}</TableCell></tr>)}</ReportTable>
     </section>
   </ReportsLayout>;
 }

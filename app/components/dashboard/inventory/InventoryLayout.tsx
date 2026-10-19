@@ -15,7 +15,7 @@ const links = [
   ["Stock Count", "stock-count", "▣"], ["Stock Transfer", "stock-transfer", "♧"],
 ] as const;
 
-export function InventoryLayout({ role, title, search, onSearchChange, createLabel = "Create New", createPermission = "inventory.create", onCreate, children }: { role: InventoryRole; title: string; search: string; onSearchChange: (value: string) => void; createLabel?: string; createPermission?: string; onCreate?: () => void; children: ReactNode }) {
+export function InventoryLayout({ role, title, createLabel = "Create New", createPermission = "inventory.create", onCreate, children }: { role: InventoryRole; title: string; search: string; onSearchChange: (value: string) => void; createLabel?: string; createPermission?: string; onCreate?: () => void; children: ReactNode }) {
   const base = `/dashboard/${role}/inventory`;
   const { can } = useAccessControl();
   return <PermissionRouteGuard permission="inventory.view" fallback={`/dashboard/${role}`}><div className="grid min-h-svh w-full bg-[#f7f0e7] text-[#392d26] md:grid-cols-[172px_192px_minmax(0,1fr)]">
@@ -36,7 +36,7 @@ export function InventoryLayout({ role, title, search, onSearchChange, createLab
     <main className="relative flex min-h-svh min-w-0 flex-col bg-cover bg-center" style={{backgroundImage:`linear-gradient(rgba(249,244,236,.78),rgba(249,244,236,.78)),url("${beansImage.src}")`}}>
       <header className="relative z-10 flex min-h-11.25 shrink-0 flex-wrap items-center gap-2 border-b border-[#e8ded2] bg-[#fbf6ed]/95 px-3 sm:flex-nowrap sm:px-4">
         <div className="flex min-w-fit items-center gap-2 text-[10px] text-[#918477]"><Link href={`/dashboard/${role}`}>Home</Link><span>›</span><span>{title}</span></div>
-        <label className="flex h-7 min-w-40 flex-1 items-center gap-2 rounded-md border border-[#e6dbcd] bg-white/90 px-2.5"><span className="text-[#8e8074]">⌕</span><input type="search" value={search} onChange={(e)=>onSearchChange(e.target.value)} placeholder={`Search ${title.toLowerCase()} or add filters...`} className="min-w-0 flex-1 bg-transparent text-[10px] outline-none placeholder:text-[#a09286]"/><kbd className="text-[9px]">⌘K</kbd></label>
+
         <button type="button" className="hidden h-7 w-11 rounded-md border border-[#e5dacd] bg-white text-[11px] md:block" title="Export">↓</button>
         {onCreate && can(createPermission) && <button type="button" onClick={onCreate} className="ml-auto flex h-7 items-center gap-1 rounded-md bg-[#28180f] px-2.5 text-[10px] font-medium text-white hover:bg-[#4a2d1b]">＋ {createLabel}</button>}
       </header>

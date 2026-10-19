@@ -164,7 +164,7 @@ a {
 .auth-panel::before {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(248, 240, 227, .04), rgba(72, 42, 25, .02));
+  background: transparent;
   content: "";
 }
 
@@ -2116,3 +2116,30 @@ a {
 }
 
 /* ========== RESPONSIVE OVERRIDES END ========== */
+
+/* Shared item controls must retain their own space beside form fields. */
+.form-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  min-height: 40px;
+  min-width: 112px;
+  flex-shrink: 0;
+  align-self: end;
+  border: 1px solid #805336;
+  border-radius: 8px;
+  background: #805336;
+  padding: .5rem 1rem;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgb(43 24 15 / 12%);
+  transition: background .15s, box-shadow .15s;
+}
+.form-add-button:hover { background: #603b25; }
+.form-add-button:focus-visible { outline: 3px solid #c5a98a; outline-offset: 3px; }
+.form-add-button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }

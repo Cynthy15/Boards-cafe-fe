@@ -1,5 +1,7 @@
 "use client";
 
+import { TableCell } from "@/app/components/dashboard/TableCell";
+
 import { useState, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -29,8 +31,6 @@ export function formatContactMoney(value: number) {
 export function ContactsLayout({
   role,
   title,
-  search,
-  onSearchChange,
   onCreate,
   children,
 }: {
@@ -102,18 +102,7 @@ export function ContactsLayout({
             <span className="text-[#c1b4a5]">›</span>
             <span className="text-[#5a493d]">{title}</span>
           </div>
-          <label className="flex h-7 min-w-40 flex-1 items-center gap-2 rounded-md border border-[#e6dbcd] bg-white/90 px-2.5">
-            <span aria-hidden="true" className="text-[#8e8074]">⌕</span>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Search contacts or add filters..."
-              aria-label={`Search ${title.toLowerCase()}`}
-              className="min-w-0 flex-1 bg-transparent text-[10px] outline-none placeholder:text-[#a09286]"
-            />
-            <kbd className="text-[9px] text-[#8e8074]">⌘K</kbd>
-          </label>
+
           {onCreate && <button type="button" onClick={onCreate} className="ml-auto flex h-7 items-center gap-1 rounded-md bg-[#28180f] px-2.5 text-[10px] font-medium text-white hover:bg-[#4a2d1b]">＋ Create New</button>}
         </header>
 
@@ -220,13 +209,13 @@ export function ContactsTable<T extends { id: number }>({
             <tbody className="text-[10px] text-[#55463a]">
               {slice.map((row) => (
                 <tr key={row.id} className="h-9 border-b border-[#eee6dc]">
-                  <td className="px-2.5"><input type="checkbox" aria-label="Select row" className="h-3 w-3 accent-[#805336]" /></td>
-                  {columns.map((column) => <td key={column.header} className={`px-2.5 ${column.className ?? ""}`}>{column.render(row)}</td>)}
+                  <TableCell className="px-2.5"><input type="checkbox" aria-label="Select row" className="h-3 w-3 accent-[#805336]" /></TableCell>
+                  {columns.map((column) => <TableCell key={column.header} className={`px-2.5 ${column.className ?? ""}`}>{column.render(row)}</TableCell>)}
                   {hasActions && (
-                    <td className="whitespace-nowrap px-2.5 text-right">
+                    <TableCell className="whitespace-nowrap px-2.5 text-right">
                       {onEdit && <button type="button" onClick={() => onEdit(row)} className={contactAction}>Edit</button>}
                       {onDelete && <button type="button" onClick={() => onDelete(row.id)} className={contactDelete}>Delete</button>}
-                    </td>
+                    </TableCell>
                   )}
                 </tr>
               ))}

@@ -49,7 +49,7 @@ export default function SignInPage() {
       <section
         className="story-panel"
         aria-label="About Mug & Bean Cafe"
-        style={{ backgroundImage: `linear-gradient(180deg, rgba(30, 16, 11, .22) 0%, rgba(30, 16, 11, .28) 45%, rgba(30, 16, 11, .78) 100%), url("${cafePhoto.src}")` }}
+        style={{ backgroundImage: `url("${cafePhoto.src}")` }}
       >
         <Link className="brand" href="/" aria-label="Mug and Bean Cafe home">
           <BrandMark />
@@ -65,7 +65,7 @@ export default function SignInPage() {
       <section
         className="auth-panel"
         aria-label="Sign in"
-        style={{ backgroundImage: `linear-gradient(90deg, rgba(246, 237, 222, .42), rgba(246, 237, 222, .42)), url("${coffeeBeans.src}")` }}
+        style={{ backgroundImage: `url("${coffeeBeans.src}")` }}
       >
         <div className="auth-card">
           {/* LOGIN SECTION START */}

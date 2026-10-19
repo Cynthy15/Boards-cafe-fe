@@ -33,11 +33,9 @@ type TransactionLayoutProps = {
 export function TransactionLayout({
   role,
   title,
-  search,
   createLabel,
   requiredPermission,
   createPermission,
-  onSearchChange,
   onCreate,
   children,
 }: TransactionLayoutProps) {
@@ -106,17 +104,7 @@ export function TransactionLayout({
             <span className="text-[#c1b4a5]">›</span>
             <span className="text-[#5a493d]">{title}</span>
           </div>
-          <label className="flex h-7 min-w-40 flex-1 items-center gap-2 rounded-md border border-[#e6dbcd] bg-white/90 px-2.5">
-            <span aria-hidden="true" className="text-[#8e8074]">⌕</span>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Search..................."
-              aria-label={`Search ${title.toLowerCase()}`}
-              className="min-w-0 flex-1 bg-transparent text-[10px] outline-none placeholder:text-[#a09286]"
-            />
-          </label>
+
           {onCreate && can(createPermission) && <button type="button" onClick={onCreate} className="ml-auto flex h-7 items-center gap-1 rounded-md bg-[#28180f] px-2.5 text-[10px] font-medium text-white hover:bg-[#4a2d1b]">
             ＋ {createLabel ?? "Create New"}
           </button>}

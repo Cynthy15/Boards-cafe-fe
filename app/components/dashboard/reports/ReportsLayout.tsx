@@ -36,8 +36,6 @@ const reportLinks: { label: ReportTitle; path: string; icon: string }[] = [
 export function ReportsLayout({
   role,
   title,
-  search,
-  onSearchChange,
   createLabel,
   onCreate,
   actionLabel,
@@ -117,18 +115,7 @@ export function ReportsLayout({
             <span className="text-[#c1b4a5]">›</span>
             <span className="text-[#5a493d]">{title}</span>
           </div>
-          <label className="flex h-7 min-w-40 flex-1 items-center gap-2 rounded-md border border-[#e6dbcd] bg-white/90 px-2.5">
-            <span aria-hidden="true" className="text-[#8e8074]">⌕</span>
-            <input
-              type="search"
-              value={search ?? ""}
-              onChange={(event) => onSearchChange?.(event.target.value)}
-              placeholder="Search reports or add filters..."
-              aria-label={`Search ${title.toLowerCase()}`}
-              className="min-w-0 flex-1 bg-transparent text-[10px] outline-none placeholder:text-[#a09286]"
-            />
-            <kbd className="text-[9px] text-[#8e8074]">⌘K</kbd>
-          </label>
+
           {actionLabel && (
             <button type="button" onClick={onAction} disabled={actionDisabled} className="flex h-7 items-center rounded-md border border-[#e5dacd] bg-white px-2.5 text-[10px] text-[#55463a] hover:bg-[#f0e5d4] disabled:cursor-not-allowed disabled:opacity-50">
               {actionLabel}
