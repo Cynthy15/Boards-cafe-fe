@@ -1,5 +1,7 @@
 "use client";
 
+import ResponsiveNavigation from "./ResponsiveNavigation";
+
 import { recordReference } from "@/lib/display-reference";
 
 import Image from "next/image";
@@ -173,14 +175,14 @@ export default function DashboardPage({ role }: DashboardPageProps) {
     { title: "Suppliers", note: "BY PURCHASES", rows: records(reports.purchases.purchases_by_supplier).slice(0, 3).map((item) => [String(item.supplier_name ?? "Unnamed supplier"), money(item.total)]) },
   ] : [];
 	return (
-		<div className="grid min-h-svh w-full bg-[#f7f0e7] text-[#392d26] md:grid-cols-[172px_minmax(0,1fr)] lg:grid-cols-[220px_minmax(0,1fr)]">
+		<div className="workspace-shell grid min-h-svh w-full grid-cols-[minmax(0,1fr)] bg-[#f7f0e7] text-[#392d26] md:grid-cols-[172px_minmax(0,1fr)] lg:grid-cols-[220px_minmax(0,1fr)]">
 			<WorkspaceRoleGuard role={role} />
 			<aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] md:sticky md:top-0 md:h-svh">
 				<Link href="/" className="mb-5 flex items-center gap-2 px-1 text-white no-underline"><Image src={brandImage} alt="Boards Café" width={32} height={32} className="rounded-full"/><strong className="text-base tracking-tight">BOARDS</strong></Link>
-				<nav aria-label="Main navigation" className="flex gap-1 overflow-x-auto md:grid md:content-start">
+				<ResponsiveNavigation main label="Menu" breakpoint="md"><nav aria-label="Main navigation" className="flex gap-1 overflow-x-auto md:grid md:content-start">
 					{mainNavigation.map(({ label, icon, href }, i) => <Link key={label} href={`${base}${href}`} aria-current={i === 0 ? "page" : undefined} className={`flex min-h-9 shrink-0 items-center gap-2.5 rounded-md px-2.5 text-xs no-underline transition ${i === 0 ? "bg-[#805336] text-white" : "text-[#cbbcaf] hover:bg-[#805336] hover:text-white"}`}><Icon name={icon}/><span>{label}</span></Link>)}
-				</nav>
-				<ProfileBadge role={role} />
+				</nav><ProfileBadge role={role} breakpoint="md" /></ResponsiveNavigation>
+
 			</aside>
 			<main className="flex min-h-svh min-w-0 flex-col bg-cover bg-center" style={{ backgroundImage: `linear-gradient(rgba(249, 241, 224, .82), rgba(249, 241, 224, .82)), url("${beansImage.src}")` }}>
 				<header className="flex h-11 shrink-0 items-center gap-4 border-b border-[#ddd1c0] bg-[#faf3e7]/95 px-4">
@@ -188,7 +190,7 @@ export default function DashboardPage({ role }: DashboardPageProps) {
 
 				</header>
 				<div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col p-3.5 sm:p-[18px]">
-					<div className="grid flex-1 gap-3.5 lg:grid-cols-[minmax(0,2.12fr)_minmax(275px,1fr)] lg:grid-rows-[auto_minmax(275px,1fr)_auto]">
+					<div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-3.5 lg:grid-cols-[minmax(0,2.12fr)_minmax(275px,1fr)] lg:grid-rows-[auto_minmax(275px,1fr)_auto]">
 						<section aria-label="Business overview" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
 							{defaultMetrics.map(({ label, key }) => <article key={key} className="flex min-h-[84px] flex-col justify-between rounded-[10px] border border-[#e2d8cb]/90 bg-[#fffdf9]/95 p-3.5 shadow-sm"><span className="flex items-center gap-2 text-[10px] text-[#64584f]"><Icon name="activity"/>{label}</span><strong className="dashboard-metric-value leading-none tracking-tight">{metricValue(key)}</strong></article>)}
 						</section>
@@ -199,10 +201,10 @@ export default function DashboardPage({ role }: DashboardPageProps) {
               {!orders.length && !loadError && <p className="py-8 text-center text-[10px] text-[#9b8d81]">No orders yet.</p>}
 						</section>
 						<section className="flex min-h-68.75 flex-col rounded-[10px] border border-[#e2d8cb]/90 bg-[#fffdf9]/95 p-3.5 shadow-sm sm:col-span-2 lg:col-span-1 lg:col-start-1 lg:row-start-2"><h2 className="m-0 text-sm font-semibold">Transaction activity</h2><p className="mt-2 text-[9px] text-[#988a7e]">Orders, sales, expenses, and purchases for the selected period.</p>{transactionCounts.length ? <><TransactionActivityChart items={transactionCounts}/></> : !isLoading && <p className="m-auto text-center text-[10px] text-[#9b8d81]">No transactions for this period.</p>}</section>
-						<section aria-label="Top business results" className="grid gap-3.5 sm:col-span-2 sm:grid-cols-3 lg:col-span-2 lg:col-start-1 lg:row-start-3">{reportCards.map(({ title, note, rows }) => <article key={title} className="min-h-[118px] rounded-[10px] border border-[#e2d8cb]/90 bg-[#fffdf9]/95 p-3.5 shadow-sm"><div className="flex justify-between"><h2 className="m-0 text-xs font-semibold">{title}</h2><span className="text-[7px] text-[#9c8e81]">{note}</span></div>{rows.length ? <ul className="mt-3 grid list-none gap-2 p-0">{rows.map(([name, value], index) => <li key={`${name}-${index}`} className="flex items-center justify-between gap-2 text-[9px]"><span className="truncate text-[#66584e]">{name}</span><strong className="shrink-0">{value}</strong></li>)}</ul> : <p className="mt-8 text-center text-[9px] text-[#9b8d81]">No results for this period.</p>}</article>)}</section>
+						<section aria-label="Top business results" className="grid gap-3.5 sm:grid-cols-3 lg:col-span-2 lg:col-start-1 lg:row-start-3">{reportCards.map(({ title, note, rows }) => <article key={title} className="min-h-[118px] rounded-[10px] border border-[#e2d8cb]/90 bg-[#fffdf9]/95 p-3.5 shadow-sm"><div className="flex justify-between"><h2 className="m-0 text-xs font-semibold">{title}</h2><span className="text-[7px] text-[#9c8e81]">{note}</span></div>{rows.length ? <ul className="mt-3 grid list-none gap-2 p-0">{rows.map(([name, value], index) => <li key={`${name}-${index}`} className="flex items-center justify-between gap-2 text-[9px]"><span className="truncate text-[#66584e]">{name}</span><strong className="shrink-0">{value}</strong></li>)}</ul> : <p className="mt-8 text-center text-[9px] text-[#9b8d81]">No results for this period.</p>}</article>)}</section>
 					</div>
 				</div>
-			</main>
+      </main>
 		</div>
 	);
 }

@@ -1,3 +1,4 @@
+import ResponsiveNavigation from "../ResponsiveNavigation";
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -44,14 +45,14 @@ export function TransactionLayout({
 
   return (
     <PermissionRouteGuard permission={requiredPermission} fallback={`/dashboard/${role}`}>
-    <div className="grid min-h-svh w-full bg-[#f7f0e7] text-[#392d26] md:grid-cols-[172px_156px_minmax(0,1fr)]">
+    <div className="workspace-shell grid min-h-svh w-full grid-cols-[minmax(0,1fr)] bg-[#f7f0e7] text-[#392d26] lg:grid-cols-[172px_156px_minmax(0,1fr)]">
       <WorkspaceRoleGuard role={role} />
-      <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] md:sticky md:top-0 md:h-svh">
+      <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] lg:sticky lg:top-0 lg:h-svh">
         <Link href="/" className="mb-5 flex items-center gap-2 px-1 text-white no-underline">
           <Image src={brandImage} alt="Boards Café" width={32} height={32} className="rounded-full" />
           <strong className="text-base tracking-tight">BOARDS</strong>
         </Link>
-        <nav aria-label="Main navigation" className="grid content-start gap-1">
+        <ResponsiveNavigation main label="Menu"><nav aria-label="Main navigation" className="flex min-w-0 gap-1 overflow-x-auto lg:grid lg:content-start">
           {[
             { label: "Home", href: `/dashboard/${role}` },
             { label: "Transactions", href: base },
@@ -69,16 +70,16 @@ export function TransactionLayout({
               {label}
             </Link>
           ))}
-        </nav>
-        <ProfileBadge role={role} />
+        </nav><ProfileBadge role={role} /></ResponsiveNavigation>
+
       </aside>
 
-      <aside className="flex flex-col border-b border-[#e9dfd3] bg-[#f1e7d7] px-3 py-3 md:sticky md:top-0 md:h-svh md:border-b-0 md:border-r md:px-3.5 md:py-4">
+      <aside className="flex flex-col border-b border-[#e9dfd3] bg-[#f1e7d7] px-3 py-3 lg:sticky lg:top-0 lg:h-svh lg:border-b-0 lg:border-r lg:px-3.5 lg:py-4">
         <Link href={`/dashboard/${role}`} className="mb-3 flex items-center gap-2 px-1.5 text-[13px] font-semibold text-[#432f22] no-underline">
           {/* <Image src={brandImage} alt="" width={25} height={25} className="h-6 w-6 rounded-full object-cover" /> */}
           Transactions
         </Link>
-        <nav aria-label="Transaction navigation" className="grid content-start gap-1">
+        <ResponsiveNavigation label="Section menu"><nav aria-label="Transaction navigation" className="flex min-w-0 gap-1 overflow-x-auto lg:grid lg:content-start">
           {transactionLinks.filter(({ label }) => label === "Sales" || label === "Orders" ? can("sales.view") : label === "Purchases" ? can("purchasing.view") : label === "Production" ? can("production.view") : can("finance.view")).map(({ label, path }) => (
             <Link
               key={label}
@@ -89,7 +90,7 @@ export function TransactionLayout({
               {label}
             </Link>
           ))}
-        </nav>
+        </nav></ResponsiveNavigation>
       </aside>
 
       <main
@@ -111,7 +112,6 @@ export function TransactionLayout({
         </header>
 
         {children}
-
       </main>
     </div>
     </PermissionRouteGuard>

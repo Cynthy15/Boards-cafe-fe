@@ -2154,3 +2154,186 @@ a {
 body .dashboard-metric-value {
   font-size: 19px !important;
 }
+
+/* Shared workspace sizing: wide tables scroll without widening the page. */
+.workspace-shell :where(aside, main, section, article, form, header, nav, .grid, .flex) {
+  min-width: 0;
+}
+
+.workspace-shell > aside {
+  overflow-y: auto;
+}
+
+.workspace-shell > aside nav > a {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.workspace-shell > main > header {
+  height: auto;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.workspace-shell > main > header > div:first-child {
+  min-width: 0;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1023px) {
+  .workspace-shell > main {
+    min-height: 65svh;
+  }
+
+  .workspace-shell > aside nav > a,
+  .workspace-shell > main > header button {
+    min-height: 44px;
+  }
+
+  .workspace-shell > aside nav {
+    overscroll-behavior-x: contain;
+  }
+}
+
+@media (max-width: 680px) {
+  /* Prevent focus zoom on mobile browsers while keeping form text readable. */
+  body input:not([type="checkbox"]):not([type="radio"]),
+  body select,
+  body textarea {
+    max-width: 100%;
+    min-width: 0;
+    font-size: 16px !important;
+  }
+
+  .password-label-row {
+    flex-wrap: wrap;
+  }
+
+  .eyebrow {
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Navigation rows must fit their links, rather than reserve a full row per link. */
+@media (max-width: 1023px) {
+  .workspace-shell > aside nav > a {
+    width: auto;
+  }
+}
+
+.workspace-shell :where(label, dl, dd) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.workspace-shell .dashboard-metric-value {
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+@media (max-width: 680px) {
+  .workspace-shell [role="dialog"] {
+    max-height: calc(100svh - 2rem);
+    padding: 16px;
+    overflow-x: hidden;
+  }
+
+  .workspace-shell [role="dialog"] :where(form, label, .grid, .flex) {
+    min-width: 0;
+  }
+
+  .workspace-shell [role="dialog"] :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea),
+  .workspace-shell [role="dialog"] button {
+    min-height: 44px;
+  }
+
+  .workspace-shell > main > header button {
+    max-width: 100%;
+    height: auto;
+    white-space: normal;
+  }
+}
+
+.responsive-navigation {
+  min-width: 0;
+}
+
+.responsive-navigation-toggle {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .responsive-navigation--lg .responsive-navigation-toggle {
+    display: flex;
+  }
+
+  .responsive-navigation--lg[data-open="false"] .responsive-navigation-list {
+    display: none;
+  }
+
+  .responsive-navigation--lg nav {
+    display: grid;
+    gap: 4px;
+    overflow: visible;
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 767px) {
+  .responsive-navigation--md .responsive-navigation-toggle {
+    display: flex;
+  }
+
+  .responsive-navigation--md[data-open="false"] .responsive-navigation-list {
+    display: none;
+  }
+
+  .responsive-navigation--md nav {
+    display: grid;
+    gap: 4px;
+    overflow: visible;
+    margin-top: 8px;
+  }
+}
+
+.responsive-navigation-toggle {
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.responsive-navigation-toggle:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+/* Keep account details below links in the dropdown and at the sidebar foot. */
+@media (min-width: 1024px) {
+  .responsive-navigation--lg.responsive-navigation--main,
+  .responsive-navigation--lg.responsive-navigation--main > .responsive-navigation-list {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-navigation--md.responsive-navigation--main,
+  .responsive-navigation--md.responsive-navigation--main > .responsive-navigation-list {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+}

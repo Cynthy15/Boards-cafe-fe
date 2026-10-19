@@ -1,5 +1,7 @@
 "use client";
 
+import ResponsiveNavigation from "../ResponsiveNavigation";
+
 import { type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -78,28 +80,28 @@ export default function AccountShell({ crumb, createLabel = "Create New", onCrea
 
   return (
     <PermissionRouteGuard permission={requiredPermission} fallback={BASE}>
-    <div className="grid min-h-svh w-full bg-[#f7f0e7] text-[#392d26] md:grid-cols-[172px_192px_minmax(0,1fr)]">
+    <div className="workspace-shell grid min-h-svh w-full grid-cols-[minmax(0,1fr)] bg-[#f7f0e7] text-[#392d26] lg:grid-cols-[172px_192px_minmax(0,1fr)]">
       <WorkspaceRoleGuard role="admin" />
       {/* main navigation */}
-      <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] md:sticky md:top-0 md:h-svh">
+      <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] lg:sticky lg:top-0 lg:h-svh">
         <Link href="/" className="mb-5 flex items-center gap-2 px-1 text-white no-underline">
           <Image src={brandImage} alt="Boards Café" width={32} height={32} className="rounded-full" />
           <strong className="text-base tracking-tight">BOARDS</strong>
         </Link>
-        <nav aria-label="Main navigation" className="flex gap-1 overflow-x-auto md:grid md:content-start">
+        <ResponsiveNavigation main label="Menu"><nav aria-label="Main navigation" className="flex min-w-0 gap-1 overflow-x-auto lg:grid lg:content-start">
           {mainNav.filter(({ label }) => label === "Home" ? can("dashboard.view") : label === "Transactions" ? can(["sales.view", "purchasing.view", "finance.view", "production.view"]) : label === "Inventory" ? can("inventory.view") : label === "Contacts" ? can("contacts.view") : label === "Reports" ? can("reports.view") : can("users.view")).map(({ label, href, icon }) => (
             <Link key={label} href={href} className="flex min-h-9 shrink-0 items-center gap-2.5 rounded-md px-2.5 text-xs text-[#cbbcaf] no-underline transition hover:bg-[#805336] hover:text-white">
               <Icon name={icon} /><span>{label}</span>
             </Link>
           ))}
-        </nav>
-        <ProfileBadge role="admin" active={pathname === `${ACCOUNT}/my-profile`} />
+        </nav><ProfileBadge role="admin" active={pathname === `${ACCOUNT}/my-profile`} /></ResponsiveNavigation>
+
       </aside>
 
       {/* account navigation */}
-      <aside className="flex flex-col border-b border-[#e9dfd3] bg-[#f1e7d7] px-3 py-3 md:sticky md:top-0 md:h-svh md:border-b-0 md:border-r md:px-3.5 md:py-4">
+      <aside className="flex flex-col border-b border-[#e9dfd3] bg-[#f1e7d7] px-3 py-3 lg:sticky lg:top-0 lg:h-svh lg:border-b-0 lg:border-r lg:px-3.5 lg:py-4">
         <Link href={ACCOUNT} className="mb-3 px-1.5 text-[15px] font-semibold text-[#2b1d15] no-underline">Management</Link>
-        <nav aria-label="Account navigation" className="flex gap-1 overflow-x-auto md:grid md:content-start md:gap-1.5">
+        <ResponsiveNavigation label="Section menu"><nav aria-label="Account navigation" className="flex min-w-0 gap-1 overflow-x-auto lg:grid lg:content-start lg:gap-1.5">
           {accountNav.filter(({ label }) => label === "User Management" ? can("users.view") : label === "Roles & Permissions" ? can("roles.view") : true).map(({ label, href, icon }) => {
             const active = pathname === href;
             return (
@@ -108,7 +110,7 @@ export default function AccountShell({ crumb, createLabel = "Create New", onCrea
               </Link>
             );
           })}
-        </nav>
+        </nav></ResponsiveNavigation>
       </aside>
 
       {/* content */}
@@ -126,7 +128,6 @@ export default function AccountShell({ crumb, createLabel = "Create New", onCrea
         </header>
 
         <div className="relative z-10 flex-1 p-4 sm:p-5">{children}</div>
-
       </main>
     </div>
     </PermissionRouteGuard>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { boardsApi, getSignedInUser, getUserPermissions, setSignedInUser, type ApiRecord } from "../../../lib/api-client";
+import { boardsApi, getUserPermissions, setSignedInUser, type ApiRecord } from "../../../lib/api-client";
 
 export type PermissionRequirement = string | readonly string[];
 
@@ -30,8 +30,8 @@ function loadProfile() {
  * listed permission; use a single permission where an action has one clear grant.
  */
 export function useAccessControl(): AccessState {
-  const [profile, setProfile] = useState<ApiRecord | null>(() => getSignedInUser());
-  const [isLoading, setIsLoading] = useState(() => !getSignedInUser());
+  const [profile, setProfile] = useState<ApiRecord | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
