@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* One readable text size across navigation, forms, tables, and page content. */
+body,
+body *:not(svg):not(svg *) {
+  font-size: 14px !important;
+}
+
 /* ========== GLOBAL STYLES START ========== */
 :root {
   --cream: #f7f0e7;

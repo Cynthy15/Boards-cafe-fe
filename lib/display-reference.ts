@@ -5,3 +5,10 @@ export function compactReference(value: unknown): string {
     (uuid) => uuid.slice(0, 8).toUpperCase(),
   );
 }
+
+/** Use the real numeric record ID for a stable, readable display reference. */
+export function recordReference(id: unknown, fallback: unknown = ""): string {
+  const value = String(id ?? "").trim();
+  if (/^\d+$/.test(value)) return value.replace(/^0+(?=\d)/, "").padStart(3, "0");
+  return compactReference(fallback || value);
+}

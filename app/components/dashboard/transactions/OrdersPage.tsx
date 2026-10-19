@@ -1,5 +1,7 @@
 "use client";
 
+import { recordReference } from "@/lib/display-reference";
+
 import { TableCell } from "@/app/components/dashboard/TableCell";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
@@ -16,7 +18,7 @@ function text(value: unknown) { return typeof value === "string" ? value : ""; }
 function toOrder(record: ApiRecord): Order {
   const items = Array.isArray(record.items) ? record.items.filter((item): item is ApiRecord => !!item && typeof item === "object").map((item) => ({ productId: Number(item.product), product: text(item.product_name), quantity: Number(item.quantity ?? 0), price: Number(item.unit_price ?? 0) })) : [];
   const tableId = Number(record.table);
-  return { id: Number(record.id), date: text(record.created_at).slice(0, 10), reference: text(record.order_number) || `#${record.id}`, items, status: text(record.status), notes: text(record.notes), total: Number(record.total_amount ?? 0), tableId: Number.isFinite(tableId) && tableId > 0 ? tableId : null, tableLabel: text(record.table_name) || text(record.table_number), serviceType: text(record.service_type), guestCount: text(record.guest_count), customerId: text(record.customer_id) };
+  return { id: Number(record.id), date: text(record.created_at).slice(0, 10), reference: `#${recordReference(record.id, record.order_number)}`, items, status: text(record.status), notes: text(record.notes), total: Number(record.total_amount ?? 0), tableId: Number.isFinite(tableId) && tableId > 0 ? tableId : null, tableLabel: text(record.table_name) || text(record.table_number), serviceType: text(record.service_type), guestCount: text(record.guest_count), customerId: text(record.customer_id) };
 }
 function toProduct(record: ApiRecord): MenuProduct { return { id: Number(record.id), name: text(record.name), price: Number(record.base_price ?? 0) }; }
 

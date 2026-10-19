@@ -1,5 +1,7 @@
 "use client";
 
+import { recordReference } from "@/lib/display-reference";
+
 import { TableCell } from "@/app/components/dashboard/TableCell";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
@@ -20,7 +22,7 @@ function toSupplier(record: ApiRecord): Supplier { return { id: number(record.id
 function toInventoryItem(record: ApiRecord): InventoryItem { return { id: number(record.id), name: text(record.name) }; }
 function toPurchase(record: ApiRecord): Purchase {
   const items = Array.isArray(record.items) ? record.items.filter((item): item is ApiRecord => !!item && typeof item === "object").map((item) => ({ id: number(item.id), inventoryItemId: number(item.inventory_item), name: text(item.inventory_item_name) || "Inventory item", quantity: number(item.ordered_quantity), receivedQuantity: number(item.received_quantity), unitCost: number(item.unit_cost) })) : [];
-  return { id: number(record.id), reference: text(record.purchase_number) || `#${record.id}`, supplier: text(record.supplier_name), date: text(record.purchase_date), expectedDate: text(record.expected_delivery_date), invoice: text(record.supplier_invoice), notes: text(record.notes), status: text(record.status), total: number(record.total_amount), items };
+  return { id: number(record.id), reference: `#${recordReference(record.id, record.purchase_number)}`, supplier: text(record.supplier_name), date: text(record.purchase_date), expectedDate: text(record.expected_delivery_date), invoice: text(record.supplier_invoice), notes: text(record.notes), status: text(record.status), total: number(record.total_amount), items };
 }
 
 export default function PurchasesPage({ role }: { role: TransactionRole }) {

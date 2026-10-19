@@ -1,5 +1,7 @@
 "use client";
 
+import { recordReference } from "@/lib/display-reference";
+
 import { TableCell } from "@/app/components/dashboard/TableCell";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
@@ -47,7 +49,7 @@ function toPaymentOptions(records: ApiRecord[]): PaymentOption[] {
 function toSale(record: ApiRecord, payments: Map<string, ApiRecord>): Sale {
   const items = Array.isArray(record.items) ? record.items.filter((item): item is ApiRecord => !!item && typeof item === "object").map((item) => ({ productId: number(item.product), name: text(item.product_name) || "Menu item", quantity: number(item.quantity), price: number(item.unit_price) })) : [];
   const orderId = identifier(record.id);
-  const reference = text(record.order_number) || `#${orderId}`;
+  const reference = `#${recordReference(record.id, record.order_number)}`;
   const payment = payments.get(orderId);
   const total = number(record.total_amount);
   const balanceDue = number(record.balance_due);

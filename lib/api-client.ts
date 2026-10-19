@@ -6,6 +6,8 @@ const REFRESH_TOKEN_KEY = "boards-cafe-refresh-token";
 const SIGNED_IN_USER_KEY = "boards-cafe-signed-in-user";
 const API_DATA_CHANGED_EVENT = "boards-cafe-api-data-changed";
 const API_REQUEST_TIMEOUT_MS = 15_000;
+export const SESSION_ACTIVITY_KEY = "boards-cafe-last-activity";
+export const SESSION_IDLE_TIMEOUT_MS = 60 * 60 * 1_000;
 
 export type ApiRecord = Record<string, unknown>;
 export type ApiBody = ApiRecord | FormData;
@@ -70,6 +72,7 @@ export function clearAuthTokens() {
   clearAccessToken();
   removeStoredValue(REFRESH_TOKEN_KEY);
   removeStoredValue(SIGNED_IN_USER_KEY);
+  removeStoredValue(SESSION_ACTIVITY_KEY);
 }
 
 /** The current signed-in account, kept locally and cleared when the person signs out. */
@@ -291,7 +294,16 @@ function friendlyFailureMessage(status: number, payload: unknown): string {
   return "We couldn’t complete that. Please try again.";
 }
 
-async function refreshAccessToken(): Promise<boolean> {
+let pendingRefresh: Promise<boolean> | null = null;
+
+function refreshAccessToken(): Promise<boolean> {
+  if (!pendingRefresh) {
+    pendingRefresh = performTokenRefresh().finally(() => { pendingRefresh = null; });
+  }
+  return pendingRefresh;
+}
+
+async function performTokenRefresh(): Promise<boolean> {
   const refresh = getRefreshToken();
   if (!refresh) return false;
 
@@ -309,7 +321,7 @@ async function refreshAccessToken(): Promise<boolean> {
 
   const payload = await readResponse(response);
   const access = response.ok ? findToken(payload) : null;
-  if (!access) return false;
+  if (!access || getRefreshToken() !== refresh) return false;
   setAccessToken(access);
   const rotatedRefresh = findToken(payload, ["refresh", "refresh_token", "refreshToken"]);
   if (rotatedRefresh) setRefreshToken(rotatedRefresh);
@@ -387,6 +399,7 @@ export async function loginWithApi(identifier: string, password: string): Promis
   if (!token || !refresh) throw new Error("We couldn’t sign you in. Please try again.");
   setAccessToken(token);
   setRefreshToken(refresh);
+  setStoredValue(SESSION_ACTIVITY_KEY, String(Date.now()));
 
   try {
     const profile = await apiDataRequest<ApiRecord>("auth/me/");

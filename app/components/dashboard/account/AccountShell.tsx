@@ -119,7 +119,7 @@ export default function AccountShell({ crumb, createLabel = "Create New", onCrea
           </div>
 
           {onCreate && can(createPermission) && (
-            <button type="button" onClick={onCreate} className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-[#28180f] px-4 text-[11px] font-semibold text-white transition hover:bg-[#4a2d1b]">
+            <button type="button" onClick={onCreate} className="ml-auto flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-[#28180f] px-4 text-[11px] font-semibold text-white transition hover:bg-[#4a2d1b]">
               <span aria-hidden="true">+</span>{createLabel}
             </button>
           )}
