@@ -26,5 +26,5 @@ export default function TransactionsLandingPage({ role }: { role: TransactionRol
 
   // There is no transaction content here: this route only chooses an allowed
   // destination after the effective permissions have loaded.
-  return null;
+  return <div className="workspace-initial-loading" role="status"><span className="workspace-spinner" />Opening transactions…</div>;
 }

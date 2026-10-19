@@ -1,10 +1,12 @@
 "use client";
+import { SectionWorkspace, WorkspaceMenuId, SectionSidebar } from "../SectionWorkspace";
+
 
 import ResponsiveNavigation from "../ResponsiveNavigation";
 
 import { type ReactNode } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "../NavigationLink";
 import { usePathname } from "next/navigation";
 
 import brandImage from "../../../images/ima.png";
@@ -80,10 +82,10 @@ export default function AccountShell({ crumb, createLabel = "Create New", onCrea
 
   return (
     <PermissionRouteGuard permission={requiredPermission} fallback={BASE}>
-    <div className="workspace-shell grid min-h-svh w-full grid-cols-[minmax(0,1fr)] bg-[#f7f0e7] text-[#392d26] lg:grid-cols-[172px_192px_minmax(0,1fr)]">
+    <SectionWorkspace className="workspace-shell grid min-h-svh w-full grid-cols-[minmax(0,1fr)] bg-[#f7f0e7] text-[#392d26] lg:grid-cols-[172px_192px_minmax(0,1fr)]">
       <WorkspaceRoleGuard role="admin" />
       {/* main navigation */}
-      <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] lg:sticky lg:top-0 lg:h-svh">
+      <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] lg:sticky lg:top-0 lg:h-svh"><WorkspaceMenuId>
         <Link href="/" className="mb-5 flex items-center gap-2 px-1 text-white no-underline">
           <Image src={brandImage} alt="Boards Café" width={32} height={32} className="rounded-full" />
           <strong className="text-base tracking-tight">BOARDS</strong>
@@ -96,22 +98,22 @@ export default function AccountShell({ crumb, createLabel = "Create New", onCrea
           ))}
         </nav><ProfileBadge role="admin" active={pathname === `${ACCOUNT}/my-profile`} /></ResponsiveNavigation>
 
-      </aside>
+      </WorkspaceMenuId></aside>
 
       {/* account navigation */}
-      <aside className="flex flex-col border-b border-[#e9dfd3] bg-[#f1e7d7] px-3 py-3 lg:sticky lg:top-0 lg:h-svh lg:border-b-0 lg:border-r lg:px-3.5 lg:py-4">
+      <SectionSidebar className="flex flex-col border-b border-[#e9dfd3] bg-[#f1e7d7] px-3 py-3 lg:sticky lg:top-0 lg:h-svh lg:border-b-0 lg:border-r lg:px-3.5 lg:py-4">
         <Link href={ACCOUNT} className="mb-3 px-1.5 text-[15px] font-semibold text-[#2b1d15] no-underline">Management</Link>
         <ResponsiveNavigation label="Section menu"><nav aria-label="Account navigation" className="flex min-w-0 gap-1 overflow-x-auto lg:grid lg:content-start lg:gap-1.5">
           {accountNav.filter(({ label }) => label === "User Management" ? can("users.view") : label === "Roles & Permissions" ? can("roles.view") : true).map(({ label, href, icon }) => {
             const active = pathname === href;
             return (
-              <Link key={href} href={href} aria-current={active ? "page" : undefined} className={`${itemClass(active)} shrink-0`}>
-                <Icon name={icon} />{label}
+              <Link key={href} href={href} aria-label={label} title={label} aria-current={active ? "page" : undefined} className={`${itemClass(active)} shrink-0`}>
+                <Icon name={icon} /><span className="section-link-label">{label}</span>
               </Link>
             );
           })}
         </nav></ResponsiveNavigation>
-      </aside>
+      </SectionSidebar>
 
       {/* content */}
       <main className="relative flex min-h-svh min-w-0 flex-col bg-cover bg-center" style={{ backgroundImage: `linear-gradient(rgba(249,244,236,.82),rgba(249,244,236,.82)),url("${beansImage.src}")` }}>
@@ -129,7 +131,7 @@ export default function AccountShell({ crumb, createLabel = "Create New", onCrea
 
         <div className="relative z-10 flex-1 p-4 sm:p-5">{children}</div>
       </main>
-    </div>
+    </SectionWorkspace>
     </PermissionRouteGuard>
   );
 }

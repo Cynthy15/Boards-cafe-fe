@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { boardsApi, getUserPermissions, setSignedInUser, type ApiRecord } from "../../../lib/api-client";
@@ -29,7 +29,20 @@ function loadProfile() {
  * Uses the API's effective permission list. A list requirement is satisfied by any
  * listed permission; use a single permission where an action has one clear grant.
  */
+const AccessContext = createContext<AccessState | null>(null);
+
+export function AccessProvider({ children }: { children: ReactNode }) {
+  const access = useProfileAccess();
+  return <AccessContext.Provider value={access}>{children}</AccessContext.Provider>;
+}
+
 export function useAccessControl(): AccessState {
+  const access = useContext(AccessContext);
+  if (!access) throw new Error("AccessProvider is required for dashboard pages.");
+  return access;
+}
+
+function useProfileAccess(): AccessState {
   const [profile, setProfile] = useState<ApiRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -69,6 +82,7 @@ export function PermissionRouteGuard({ permission, fallback, children }: { permi
     if (!isLoading && permission && !can(permission) && pathname !== fallback) router.replace(fallback);
   }, [can, fallback, isLoading, pathname, permission, router]);
 
-  if (isLoading || (permission && !can(permission))) return null;
+  if (isLoading) return <div className="workspace-initial-loading" role="status"><span className="workspace-spinner" />Loading workspace…</div>;
+  if (permission && !can(permission)) return <div className="workspace-initial-loading" role="status">Checking access…</div>;
   return <>{children}</>;
 }

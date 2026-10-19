@@ -1,10 +1,12 @@
 "use client";
+import { SectionWorkspace, WorkspaceMenuId, SectionSidebar } from "../SectionWorkspace";
+
 
 import ResponsiveNavigation from "../ResponsiveNavigation";
 
 import type { ReactNode } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "../NavigationLink";
 import WorkspaceRoleGuard from "../WorkspaceRoleGuard";
 import ProfileBadge from "../ProfileBadge";
 import { PermissionRouteGuard, useAccessControl } from "../AccessControl";
@@ -61,9 +63,9 @@ export function ReportsLayout({
 
   return (
     <PermissionRouteGuard permission="reports.view" fallback={`/dashboard/${role}`}>
-    <div className="workspace-shell grid min-h-svh w-full grid-cols-[minmax(0,1fr)] bg-[#f7f0e7] text-[#392d26] lg:grid-cols-[172px_156px_minmax(0,1fr)] print:block">
+    <SectionWorkspace className="workspace-shell grid min-h-svh w-full grid-cols-[minmax(0,1fr)] bg-[#f7f0e7] text-[#392d26] lg:grid-cols-[172px_156px_minmax(0,1fr)] print:block">
       <WorkspaceRoleGuard role={role} />
-      <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] lg:sticky lg:top-0 lg:h-svh print:hidden">
+      <aside className="flex flex-col bg-[#2b180f] px-3.5 py-4 text-[#e9ddd1] lg:sticky lg:top-0 lg:h-svh print:hidden"><WorkspaceMenuId>
         <Link href="/" className="mb-5 flex items-center gap-2 px-1 text-white no-underline">
           <Image src={brandImage} alt="Boards Café" width={32} height={32} className="rounded-full" />
           <strong className="text-base tracking-tight">BOARDS</strong>
@@ -88,24 +90,25 @@ export function ReportsLayout({
           ))}
         </nav><ProfileBadge role={role} /></ResponsiveNavigation>
 
-      </aside>
+      </WorkspaceMenuId></aside>
 
-      <aside className="flex flex-col border-b border-[#e9dfd3] bg-[#f1e7d7] px-3 py-3 lg:sticky lg:top-0 lg:h-svh lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-3.5 lg:py-4 print:hidden">
+      <SectionSidebar className="flex flex-col border-b border-[#e9dfd3] bg-[#f1e7d7] px-3 py-3 lg:sticky lg:top-0 lg:h-svh lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-3.5 lg:py-4 print:hidden">
         <Link href={base} className="mb-3 flex items-center gap-2 px-1.5 text-[13px] font-semibold text-[#432f22] no-underline">Reports</Link>
         <ResponsiveNavigation label="Section menu"><nav aria-label="Reports navigation" className="flex min-w-0 gap-1 overflow-x-auto lg:grid lg:content-start">
           {reportLinks.map(({ label, path, icon }) => (
             <Link
               key={label}
+              aria-label={label} title={label}
               href={`${base}${path}`}
               aria-current={label === title ? "page" : undefined}
               className={`flex min-h-8 items-center gap-2 rounded-md px-2 text-[10px] no-underline transition ${label === title ? "bg-[#eadcc8] font-medium text-[#4d3828]" : "text-[#78695c] hover:bg-[#eadcc8] hover:text-[#4d3828]"}`}
             >
               <span className="w-4 text-center">{icon}</span>
-              {label}
+              <span className="section-link-label">{label}</span>
             </Link>
           ))}
         </nav></ResponsiveNavigation>
-      </aside>
+      </SectionSidebar>
 
       <main
         className="relative flex min-h-svh min-w-0 flex-col bg-cover bg-center"
@@ -132,7 +135,7 @@ export function ReportsLayout({
 
         {children}
       </main>
-    </div>
+    </SectionWorkspace>
     </PermissionRouteGuard>
   );
 }

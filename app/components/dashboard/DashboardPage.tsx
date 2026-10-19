@@ -5,7 +5,7 @@ import ResponsiveNavigation from "./ResponsiveNavigation";
 import { recordReference } from "@/lib/display-reference";
 
 import Image from "next/image";
-import Link from "next/link";
+import Link from "./NavigationLink";
 import ProfileBadge from "./ProfileBadge";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";

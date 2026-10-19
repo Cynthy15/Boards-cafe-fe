@@ -332,7 +332,7 @@ async function performTokenRefresh(): Promise<boolean> {
  * Make a request against the API. A single failed authenticated request is retried
  * after refreshing the locally stored JWT, so active sessions survive access-token expiry.
  */
-export async function apiRequest<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
+async function performApiRequest<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
   let result = await sendRequest(path, init);
   const canRefresh = !path.startsWith("auth/login/") && !path.startsWith("auth/token/refresh/") && !path.startsWith("auth/token/blacklist/");
 
@@ -354,6 +354,33 @@ export async function apiRequest<T = unknown>(path: string, init: RequestInit = 
   if (!path.startsWith("auth/") && !["GET", "HEAD", "OPTIONS"].includes(method)) notifyApiDataChanged();
 
   return result.payload as T;
+}
+
+// Share simultaneous reads without caching sales or stock after they change.
+const pendingReads = new Map<string, Promise<unknown>>();
+let activeRequests = 0;
+const requestListeners = new Set<() => void>();
+export function subscribeToRequestActivity(listener: () => void) {
+  requestListeners.add(listener);
+  return () => { requestListeners.delete(listener); };
+}
+export function getActiveRequestCount() { return activeRequests; }
+function reportRequestActivity() { requestListeners.forEach((listener) => listener()); }
+
+export function apiRequest<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
+  const share = typeof window !== "undefined" && (!init.method || init.method.toUpperCase() === "GET") && !init.signal && !init.headers;
+  const key = `${getAccessToken() ?? ""}:${path}`;
+  const pending = share ? pendingReads.get(key) : undefined;
+  if (pending) return pending as Promise<T>;
+  activeRequests += 1;
+  reportRequestActivity();
+  const request = performApiRequest<T>(path, init).finally(() => {
+    if (share) pendingReads.delete(key);
+    activeRequests -= 1;
+    reportRequestActivity();
+  });
+  if (share) pendingReads.set(key, request);
+  return request;
 }
 
 /** Read API payloads that are wrapped in one or more `{ data: ... }` envelopes. */

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "./NavigationLink";
 import { useRouter } from "next/navigation";
 
 import { getUserDisplayName, logoutFromApi } from "../../../lib/api-client";

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "./NavigationLink";
 
 import brandImage from "../../images/ima.png";
 import beansImage from "../../images/image.png";
