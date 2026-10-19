@@ -2149,3 +2149,8 @@ a {
 .form-add-button:hover { background: #603b25; }
 .form-add-button:focus-visible { outline: 3px solid #c5a98a; outline-offset: 3px; }
 .form-add-button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+
+/* Keep business overview totals prominent above the shared text size. */
+body .dashboard-metric-value {
+  font-size: 19px !important;
+}

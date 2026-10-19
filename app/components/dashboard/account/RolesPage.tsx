@@ -89,7 +89,7 @@ export default function RolesPage() {
   }
 
   async function remove(role: Role) {
-    if (!window.confirm(`Delete the ${role.name} role? Roles assigned to staff or built into the backend cannot be deleted.`)) return;
+    if (!window.confirm(`Delete the ${role.name} role? Roles assigned to staff and built-in roles cannot be deleted.`)) return;
     try { await boardsApi.deleteRole(role.id); notify("Role deleted."); await load(); }
     catch (requestError) { setErrors({ form: requestError instanceof Error ? requestError.message : "Unable to delete this role." }); }
   }
@@ -105,13 +105,13 @@ export default function RolesPage() {
 
   return <AccountShell crumb="Roles & Permissions" search={query} onSearchChange={setQuery} createLabel="Create Role" onCreate={openCreate} requiredPermission="roles.view" createPermission="roles.create">
     {errors.form && !draft && <p role="alert" className="mb-3 rounded-md bg-red-50 p-2 text-[11px] text-red-700">{errors.form}</p>}
-    {isLoading ? <p className="p-4 text-[11px] text-[#6f6054]">Loading roles and permissions…</p> : <DataTable rows={roles} columns={columns} query={query} searchText={(role) => `${role.name} ${role.description} ${role.isActive ? "active" : "inactive"}`} emptyText="No roles returned by the API." />}
-    {draft && <Drawer title={editing ? "Edit Role" : "Create Role"} description="Permissions come from the API catalogue and are saved with this role." onClose={() => { setDraft(null); setEditing(null); }}><form onSubmit={submit} className="grid gap-4" noValidate>
+    {isLoading ? <p className="p-4 text-[11px] text-[#6f6054]">Loading roles and permissions…</p> : <DataTable rows={roles} columns={columns} query={query} searchText={(role) => `${role.name} ${role.description} ${role.isActive ? "active" : "inactive"}`} emptyText="No roles yet." />}
+    {draft && <Drawer title={editing ? "Edit Role" : "Create Role"} description="Choose the permissions to save with this role." onClose={() => { setDraft(null); setEditing(null); }}><form onSubmit={submit} className="grid gap-4" noValidate>
       {errors.form && <p role="alert" className="m-0 rounded-md bg-red-50 p-2 text-[10px] text-red-700">{errors.form}</p>}
       <Field label="Role name" required error={errors.name}><input autoFocus value={draft.name} onChange={(event) => set({ name: event.target.value })} placeholder="e.g., Cashier" className={fieldClass} /></Field>
       <Field label="Description"><textarea value={draft.description} onChange={(event) => set({ description: event.target.value })} placeholder="What this role is responsible for" className="min-h-20 w-full rounded-lg border border-[#e6dccd] bg-[#fffaf3] px-3.5 py-2.5 text-[12px] text-[#30251f] outline-none placeholder:text-[#9a8c80] focus:border-[#805336]" /></Field>
       <RadioGroup<"active" | "inactive"> legend="Availability" name="role-status" value={draft.isActive ? "active" : "inactive"} onChange={(value) => set({ isActive: value === "active" })} options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} />
-      {can("roles.assign_permissions") && <section><h3 className="mb-1 text-[12px] font-semibold text-[#3b2e26]">Permissions ({draft.permissionIds.length})</h3><p className="mb-3 mt-0 text-[10px] leading-4 text-[#8b7d70]">Select exactly what a role can do. The backend enforces the final authorization.</p><PermissionChecklist permissions={permissions} selectedIds={draft.permissionIds} onChange={(permissionIds) => set({ permissionIds })} disabled={isSaving} /></section>}
+      {can("roles.assign_permissions") && <section><h3 className="mb-1 text-[12px] font-semibold text-[#3b2e26]">Permissions ({draft.permissionIds.length})</h3><p className="mb-3 mt-0 text-[10px] leading-4 text-[#8b7d70]">Choose what people with this role can view and manage.</p><PermissionChecklist permissions={permissions} selectedIds={draft.permissionIds} onChange={(permissionIds) => set({ permissionIds })} disabled={isSaving} /></section>}
       <div className="mt-2 grid grid-cols-2 gap-3"><button type="button" disabled={isSaving} onClick={() => { setDraft(null); setEditing(null); }} className={`${secondaryButton} h-10`}>Cancel</button><button type="submit" disabled={isSaving} className={`${primaryButton} h-10`}>{isSaving ? "Saving…" : editing ? "Save Role" : "Create Role"}</button></div>
     </form></Drawer>}
     {toast}

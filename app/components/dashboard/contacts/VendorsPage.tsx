@@ -20,7 +20,7 @@ function VendorForm({ editing, onClose, onSave, error }: { editing: Vendor | nul
     await onSave({ id: editing?.id ?? 0, company: String(form.get("company") || "").trim(), contactName: String(form.get("contactName") || "").trim(), email: String(form.get("email") || "").trim(), phone: String(form.get("phone") || "").trim(), tin: String(form.get("tin") || "").trim(), address: String(form.get("address") || "").trim(), status: editing?.status ?? "active" });
   }
 
-  return <ContactDrawer title={editing ? "Update Vendor" : "Create New Vendor"} description="This saves the supplier to the live Boards Cafe API." submitLabel={editing ? "Save Vendor" : "Create Vendor"} onClose={onClose} onSubmit={(event) => { void submit(event); }}>
+  return <ContactDrawer title={editing ? "Update Vendor" : "Create New Vendor"} description="Save the vendor’s contact and business details." submitLabel={editing ? "Save Vendor" : "Create Vendor"} onClose={onClose} onSubmit={(event) => { void submit(event); }}>
     {error && <p role="alert" className="m-0 rounded-md bg-red-50 p-2 text-[10px] text-red-700">{error}</p>}
     <label className={contactLabel}>Company Name *<input required name="company" defaultValue={editing?.company ?? ""} placeholder="e.g., Kigali Roasters" className={contactField} /></label>
     <label className={contactLabel}>Contact Name<input name="contactName" defaultValue={editing?.contactName ?? ""} placeholder="e.g., John Doe" className={contactField} /></label>
@@ -28,7 +28,7 @@ function VendorForm({ editing, onClose, onSave, error }: { editing: Vendor | nul
     <label className={contactLabel}>Phone Number<input name="phone" type="tel" defaultValue={editing?.phone ?? ""} placeholder="e.g., +250 788 123 456" className={contactField} /></label>
     <label className={contactLabel}>TIN Number<input name="tin" defaultValue={editing?.tin ?? ""} placeholder="Enter TIN" className={contactField} /></label>
     <label className={contactLabel}>Address<textarea name="address" defaultValue={editing?.address ?? ""} placeholder="Vendor address" className="min-h-16 rounded-md border border-[#e2d6c6] bg-white p-2 text-[10px] outline-none placeholder:text-[#a09286] focus:border-[#805336]" /></label>
-    <p className="m-0 text-[9px] text-[#8e8074]">Company name is required by the API.</p>
+    <p className="m-0 text-[9px] text-[#8e8074]">Company name is required.</p>
   </ContactDrawer>;
 }
 
@@ -64,7 +64,7 @@ export default function VendorsPage({ role }: { role: ContactsRole }) {
   }
 
   async function remove(vendor: Vendor) {
-    if (!window.confirm(`Delete ${vendor.company}? The API will keep a supplier that is already linked to purchases; deactivate it there instead.`)) return;
+    if (!window.confirm(`Delete ${vendor.company}? Vendors linked to purchases must be deactivated instead of deleted.`)) return;
     try { await boardsApi.deleteSupplier(vendor.id); await loadVendors(); }
     catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to delete this vendor. It may be linked to purchases; deactivate it instead."); }
   }
@@ -80,7 +80,7 @@ export default function VendorsPage({ role }: { role: ContactsRole }) {
         { header: "TIN Number", render: (vendor: Vendor) => vendor.tin || "-" },
         { header: "Address", render: (vendor: Vendor) => vendor.address || "-", className: "max-w-[180px] truncate" },
         { header: "Status", render: (vendor: Vendor) => vendor.status },
-      ]} emptyTitle="No vendors returned by the API" emptyHint="Create a supplier to add the first vendor." onEdit={can("purchasing.update") ? (vendor) => { setEditing(vendor); setError(""); setOpen(true); } : undefined} onDelete={can("purchasing.update") ? (id) => { const vendor = vendors.find((item) => item.id === id); if (vendor) void remove(vendor); } : undefined} />}
+      ]} emptyTitle="No vendors yet" emptyHint="Create a supplier to add the first vendor." onEdit={can("purchasing.update") ? (vendor) => { setEditing(vendor); setError(""); setOpen(true); } : undefined} onDelete={can("purchasing.update") ? (id) => { const vendor = vendors.find((item) => item.id === id); if (vendor) void remove(vendor); } : undefined} />}
       {open && <VendorForm editing={editing} onClose={close} onSave={save} error={error} />}
     </ContactsLayout>
   );

@@ -98,14 +98,14 @@ export default function PaymentMethodsPage() {
   return (
     <AccountShell crumb="Payment Methods" search={query} onSearchChange={setQuery} onCreate={() => { setErrors({}); setEditing({ id: null, draft: emptyDraft }); }}>
       {errors.form && !editing && <p role="alert" className="mb-3 rounded-md bg-red-50 p-2 text-[11px] text-red-700">{errors.form}</p>}
-      {isLoading ? <p className="p-4 text-[11px] text-[#6f6054]">Loading payment methods…</p> : <DataTable rows={methods} columns={columns} query={query} searchText={(m) => `${m.name} ${m.type} ${m.description}`} emptyText="No payment methods returned by the API." />}
+      {isLoading ? <p className="p-4 text-[11px] text-[#6f6054]">Loading payment methods…</p> : <DataTable rows={methods} columns={columns} query={query} searchText={(m) => `${m.name} ${m.type} ${m.description}`} emptyText="No payment methods yet." />}
       {editing && <Dialog title={editing.id ? "Edit Payment Method" : "Create Payment Method"} description="Add a payment option to the live Boards Cafe workspace." onClose={() => setEditing(null)}>
         <form onSubmit={submit} className="grid gap-3.5" noValidate>
           {errors.form && <p role="alert" className="m-0 rounded-md bg-red-50 p-2 text-[10px] text-red-700">{errors.form}</p>}
           <Field label="Payment Method Name" required error={errors.name}><input autoFocus value={editing.draft.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g., Mobile money" className={fieldClass} /></Field>
           <Field label="Type" required error={errors.type}><select value={editing.draft.type} onChange={(e) => set({ type: e.target.value as PaymentType | "" })} className={fieldClass}><option value="">Select payment type</option>{paymentTypes.map((type) => <option key={type} value={type}>{type.replaceAll("_", " ")}</option>)}</select></Field>
           <Field label="Description"><input value={editing.draft.description} onChange={(e) => set({ description: e.target.value })} placeholder="Optional payment instructions" className={fieldClass} /></Field>
-          <div className="grid gap-1.5"><RadioGroup<"yes" | "no"> legend="Use as default" name="payment-featured" value={editing.draft.featured} onChange={(featured) => set({ featured })} options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]} /><p className={`${hintClass} m-0`}>The API keeps one active default method at a time.</p></div>
+          <div className="grid gap-1.5"><RadioGroup<"yes" | "no"> legend="Use as default" name="payment-featured" value={editing.draft.featured} onChange={(featured) => set({ featured })} options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]} /><p className={`${hintClass} m-0`}>Only one payment method can be the default.</p></div>
           <div className="mt-1 flex justify-end gap-2"><button type="button" onClick={() => setEditing(null)} className={secondaryButton}>Cancel</button><button type="submit" className={primaryButton}>{editing.id ? "Save Method" : "Create Method"}</button></div>
         </form>
       </Dialog>}

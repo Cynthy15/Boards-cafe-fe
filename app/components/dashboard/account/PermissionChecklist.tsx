@@ -49,7 +49,7 @@ export function PermissionChecklist({
     onChange(selectedIds.includes(id) ? selectedIds.filter((value) => value !== id) : [...selectedIds, id]);
   }
 
-  if (!permissions.length) return <p className="m-0 rounded-md bg-[#f5eee5] p-3 text-[10px] text-[#7b6d61]">No permission records were returned by the API.</p>;
+  if (!permissions.length) return <p className="m-0 rounded-md bg-[#f5eee5] p-3 text-[10px] text-[#7b6d61]">No permissions are available yet.</p>;
 
   return <div className="grid gap-3">
     {Object.entries(groups).sort(([first], [second]) => first.localeCompare(second)).map(([module, entries]) => (

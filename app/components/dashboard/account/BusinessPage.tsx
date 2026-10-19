@@ -65,7 +65,7 @@ export default function BusinessPage() {
     try {
       const body = { name: values.name.trim(), category: values.category, email: values.email, phone: values.phone, tin: values.tin, address: values.address, currency: values.currency, timezone: values.timezone };
       const updated = businessId ? await boardsApi.updateBusiness(businessId, body) : await boardsApi.createBusiness(body);
-      setSaved(toBusinessDetails(updated, config)); setForm(null); setErrors({}); setIsEditing(false); notify("Business details saved to the API.");
+      setSaved(toBusinessDetails(updated, config)); setForm(null); setErrors({}); setIsEditing(false); notify("Business details saved.");
       await reload();
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : "Unable to save business details." });
@@ -81,7 +81,7 @@ export default function BusinessPage() {
     try {
       const updated = await boardsApi.updateBusiness(businessId, { currency: values.currency, timezone: values.timezone });
       const nextConfig = await boardsApi.updateBusinessConfiguration(businessId, { receipt_footer: values.receiptNotes });
-      setConfig(nextConfig); setSaved(toBusinessDetails(updated, nextConfig)); setForm(null); setErrors({}); setIsEditing(false); notify("Preferences saved to the API.");
+      setConfig(nextConfig); setSaved(toBusinessDetails(updated, nextConfig)); setForm(null); setErrors({}); setIsEditing(false); notify("Preferences saved.");
       await reload();
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : "Unable to save preferences." });
